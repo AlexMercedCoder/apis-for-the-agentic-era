@@ -46,6 +46,9 @@ cap place-order-key-reused -X POST "$B/orders" \
 cap place-order-no-key -X POST "$B/orders" \
   -H 'Content-Type: application/json' \
   --data-binary @requests/place-order.json
+cap place-order-bad-key -X POST "$B/orders" \
+  -H 'Content-Type: application/json' -H 'Idempotency-Key: 1' \
+  --data-binary @requests/place-order.json
 cap place-order-out-of-stock -X POST "$B/orders" \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: "0b7e4c1d-5a2f-4c3e-9d8b-7a6f5e4d3c2b"' \

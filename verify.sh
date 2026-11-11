@@ -135,10 +135,11 @@ check "ch03: POST /orders creates ord-5005; the retry replays it" \
            cmp -s '$CH03/place-order.out' '$CH03/place-order-retry.out' &&
            [ \$(grep -c 'idempotency=new' '$CH03/server-log.txt') -eq 1 ] &&
            [ \$(grep -c 'idempotency=replay' '$CH03/server-log.txt') -eq 1 ]"
-check "ch03: a reused key with a new body is 422, no key is 400" \
+check "ch03: a reused key with a new body is 422; no key or a bad one is 400" \
   bash -c "grep -q 'idempotency-key-reused' '$CH03/place-order-key-reused.out' &&
            grep -q '< HTTP/1.1 400 Bad Request' '$CH03/place-order-no-key.err' &&
-           grep -q 'idempotency-key-missing' '$CH03/place-order-no-key.out'"
+           grep -q 'idempotency-key-missing' '$CH03/place-order-no-key.out' &&
+           grep -q 'idempotency-key-invalid' '$CH03/place-order-bad-key.out'"
 check "ch03: out-of-stock order is a 409 problem" \
   grep -q '"type": "https://harbor.example/problems/out-of-stock"' \
   "$CH03/place-order-out-of-stock.out"
@@ -173,6 +174,11 @@ assert po['input_schema']['required'] == ['customer_id', 'lines']
 assert set(po) == {'name', 'description', 'input_schema'}
 ask = [x['name'] for x in t.TOOLS if x['x-harbor']['needs_approval']]
 assert ask == ['place_order', 'cancel_order'], ask
+import harbor_api as h, re as r
+assert h.store.keys == {}, 'keys start empty'
+k = '6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b'
+assert r.fullmatch(h.KEY_PATTERN, chr(34) + k + chr(34))
+assert not r.fullmatch(h.KEY_PATTERN, k)
 \""
 
 echo

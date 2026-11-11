@@ -8,6 +8,7 @@
 "POST /orders HTTP/1.1" 201 idempotency=replay
 "POST /orders HTTP/1.1" 422
 "POST /orders HTTP/1.1" 400
+"POST /orders HTTP/1.1" 400
 "POST /orders HTTP/1.1" 409
 "GET /orders/ord-5005 HTTP/1.1" 200
 "PUT /orders/ord-5003/cancellation HTTP/1.1" 200 cancellation=new

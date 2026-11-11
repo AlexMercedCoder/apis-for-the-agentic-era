@@ -10,7 +10,7 @@ truth. The same document is turned into agent tools.
 
 - `curl` (the captures were made with 7.81.0)
 - [uv](https://docs.astral.sh/uv/) (0.6.14 used); it installs Python 3.13
-  and the pinned packages in `pyproject.toml`: `fastapi==0.162.0`,
+  (pinned in `.python-version`) and the pinned packages in `pyproject.toml`: `fastapi==0.162.0`,
   `uvicorn==0.54.0`, `httpx==0.28.1`, `pyyaml==6.0.3` (locked in `uv.lock`
   with pydantic 2.14.3 and starlette 1.10.0)
 
@@ -47,10 +47,14 @@ Every error body is `application/problem+json` with `type`
 
 `Idempotency-Key` follows the IETF httpapi draft
 (draft-ietf-httpapi-idempotency-key-header-08, October 2026): missing key
-400, same key with a different body 422, same key while the first request
+400, a key that isn't a quoted string of 16 to 64 letters, digits, or
+hyphens 400, same key with a different body 422, same key while the first request
 is still running 409, same key and body within 24 hours replays the first
-response. Keys live in memory, so a restart forgets them; a real service
-stores them with the order.
+response. Keys are scoped to the order's `customer_id`, so one customer
+can't replay or probe another's orders (draft-08 section 5); Chapter 8
+replaces that asserted ID with an authenticated caller. Keys live in
+memory, so a restart forgets them; a real service stores them in the same
+transaction as the order.
 
 ## Run it
 

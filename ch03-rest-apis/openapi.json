@@ -221,10 +221,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 255
+              "pattern": "^\"[A-Za-z0-9-]{16,64}\"$"
             },
-            "description": "A new UUID per order; reuse it only to retry the same order"
+            "description": "A new quoted UUID per order; reuse it only to retry the same order"
           }
         ],
         "requestBody": {

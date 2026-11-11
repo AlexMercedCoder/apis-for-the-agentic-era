@@ -1,0 +1,20 @@
+*   Trying 127.0.0.1:8003...
+* Connected to 127.0.0.1 (127.0.0.1) port 8003 (#0)
+> POST /orders HTTP/1.1
+> Host: 127.0.0.1:8003
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Content-Type: application/json
+> Idempotency-Key: 1
+> Content-Length: 134
+> 
+} [134 bytes data]
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 400 Bad Request
+< date: Wed, 11 Nov 2026 04:07:16 GMT
+< server: harbor-ch03/1.0
+< content-length: 325
+< content-type: application/problem+json
+< 
+{ [325 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

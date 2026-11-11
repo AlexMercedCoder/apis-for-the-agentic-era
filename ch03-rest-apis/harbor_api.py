@@ -36,6 +36,7 @@ DATA = Path(__file__).resolve().parent.parent / "harbor-data"
 PROBLEMS = "https://harbor.example/problems/"
 PORT = 8003
 KEY_TTL_HOURS = 24
+KEY_PATTERN = r'^"[A-Za-z0-9-]{16,64}"$'  # an RFC 9651 sf-string
 
 BookId = Annotated[str, PathParam(pattern=r"^bk-[0-9]{4}$",
                                   description="Harbor book ID, such as "
@@ -140,7 +141,7 @@ class Store:
         self.orders = {o["id"]: o for o in self._load("orders.json")}
         self.reviews = self._load("reviews.json")
         self.cancellations = {}
-        self.keys = {}  # Idempotency-Key -> (fingerprint, status, body)
+        self.keys = {}  # (customer, key) -> (fingerprint, status, body)
 
     @staticmethod
     def _load(name):
@@ -264,21 +265,31 @@ async def on_http_error(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def on_invalid(request: Request, exc: RequestValidationError):
-    errors = []
+    errors, key_problem = [], None
     for e in exc.errors():
+        if [str(p).lower() for p in e["loc"]] == ["header",
+                                                   "idempotency-key"]:
+            key_problem = "missing" if e["type"] == "missing" else "invalid"
         where, *rest = e["loc"]
         if where == "body":
             errors.append({"detail": e["msg"], "pointer": "#/" + "/".join(
                 str(p) for p in rest)})
         else:
             errors.append({"detail": e["msg"], "parameter": str(rest[0])})
-    if any(e.get("parameter", "").lower() == "idempotency-key"
-           for e in errors):
+    if key_problem == "missing":
         return problem_response(
             request, 400, "idempotency-key-missing",
             "Idempotency-Key required",
             "POST /orders needs an Idempotency-Key header.",
             hint="Send a new UUID per order; reuse it only to retry.")
+    if key_problem == "invalid":
+        return problem_response(
+            request, 400, "idempotency-key-invalid",
+            "Idempotency-Key malformed",
+            "The key must be a quoted string of 16 to 64 letters, "
+            "digits, or hyphens.",
+            hint='Send a quoted UUID, such as "8e03978e-40d5-43e8-'
+                 'bc93-6894a57f9324".')
     return problem_response(
         request, 422, "invalid-request", "Invalid request",
         "The request failed validation; see errors.", errors=errors)
@@ -361,13 +372,17 @@ def list_reviews(book_id: BookId):
 def place_order(
         order_in: OrderIn, request: Request,
         idempotency_key: Annotated[str, Header(
-            alias="Idempotency-Key", min_length=1, max_length=255,
-            description="A new UUID per order; reuse it only to retry "
-                        "the same order")]):
+            alias="Idempotency-Key", pattern=KEY_PATTERN,
+            description="A new quoted UUID per order; reuse it only "
+                        "to retry the same order")]):
     fingerprint = hashlib.sha256(
         order_in.model_dump_json().encode()).hexdigest()
+    # Keys are scoped to the customer, so one caller can't replay or
+    # probe another's orders (draft-08 section 5). Chapter 8 replaces
+    # the asserted customer_id with an authenticated identity.
+    scoped = (order_in.customer_id, idempotency_key)
     with store.lock:
-        seen = store.keys.get(idempotency_key)
+        seen = store.keys.get(scoped)
         if seen is not None:
             if seen[0] == "in-progress":
                 raise ProblemError(409, "idempotency-key-in-use",
@@ -385,7 +400,7 @@ def place_order(
             return PrettyJSON(seen[2], status_code=seen[1],
                                 headers={"Location": seen[2]["links"]
                                          ["self"]["href"]})
-        store.keys[idempotency_key] = ("in-progress", None, None)
+        store.keys[scoped] = ("in-progress", None, None)
     try:
         lines = []
         for line in order_in.lines:
@@ -422,10 +437,10 @@ def place_order(
             }
             store.orders[order["id"]] = order
             view = order_view(order)
-            store.keys[idempotency_key] = (fingerprint, 201, view)
+            store.keys[scoped] = (fingerprint, 201, view)
     except Exception:
         with store.lock:
-            store.keys.pop(idempotency_key, None)
+            store.keys.pop(scoped, None)
         raise
     request.state.idempotency = "new"
     return PrettyJSON(view, status_code=201,
