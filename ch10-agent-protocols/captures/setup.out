@@ -1,0 +1,1 @@
+realm harbor: scopes orders:read, orders:write; clients harbor-mcp, harbor-mcp-client; customers rosa, sam

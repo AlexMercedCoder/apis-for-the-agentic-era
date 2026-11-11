@@ -1,0 +1,9 @@
+card: Harbor Books fulfillment agent, skill arrange-delivery, streaming=True, push=True
+request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage", "params": {"message": {"messageId": "c43e9e03-857a-4152-8e4f-5dc6732d43a5", "role": "ROLE_USER", "parts": [{"text": "Please ship this order for Rosa."}, {"data": {"order_id": "ord-5003", "gift_wrap": true}}]}, "configuration": {"taskPushNotificationConfig": {"url": "http://127.0.0.1:8012/a2a/push", "token": "not-a-real-push-token"}}}}
+response: 200 text/event-stream; charset=utf-8
+  task ccd89d0d TASK_STATE_SUBMITTED
+  status TASK_STATE_WORKING   Picking ord-5003
+  status TASK_STATE_WORKING   Packed and gift-wrapped ord-5003
+  artifact shipment {"order_id": "ord-5003", "tracking": "DP50030042", "gift_wrap": true, "carrier": "demo-post"}
+  status TASK_STATE_COMPLETED ord-5003 handed to the carrier
+GetTask: TASK_STATE_COMPLETED, 1 artifact

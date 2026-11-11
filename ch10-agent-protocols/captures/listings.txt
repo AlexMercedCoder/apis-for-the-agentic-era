@@ -1,0 +1,292 @@
+=== server/discover request
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "server/discover",
+  "params": {
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientInfo": {
+        "name": "harbor-demo-host",
+        "version": "1.0.0"
+      },
+      "io.modelcontextprotocol/clientCapabilities": {
+        "elicitation": {"form": {}, "url": {}}
+      }
+    }
+  }
+}
+
+=== server/discover response
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "cacheScope": "private",
+    "capabilities": {
+      "prompts": {"listChanged": false},
+      "resources": {
+        "listChanged": false,
+        "subscribe": false
+      },
+      "tools": {"listChanged": false}
+    },
+    "resultType": "complete",
+    "supportedVersions": ["2026-07-28"],
+    "ttlMs": 0,
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "harbor-books",
+        "version": "1.0.0"
+      }
+    }
+  }
+}
+
+=== tools/list: place_order
+{
+  "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false
+  },
+  "description": "Place an order. Buy one or more books...",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "lines": {
+        "items": {
+          "...": "book_id and quantity, as in Chapter 3"
+        },
+        "type": "array",
+        "maxItems": 20,
+        "minItems": 1
+      }
+    },
+    "required": ["lines"],
+    "additionalProperties": false
+  },
+  "name": "place_order"
+}
+
+=== tools/call place_order: input_required
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "inputRequests": {
+      "confirm": {
+        "method": "elicitation/create",
+        "params": {
+          "message": "Order 1 x Frankenstein for 2299 cents?",
+          "mode": "form",
+          "requestedSchema": {
+            "properties": {
+              "confirm": {
+                "type": "boolean",
+                "title": "Go ahead?"
+              }
+            },
+            "required": ["confirm"],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "requestState": "<sealed, 300 characters>",
+    "resultType": "input_required"
+  }
+}
+
+=== tools/call place_order: the retry's params
+{
+  "name": "place_order",
+  "arguments": {
+    "lines": [{"book_id": "bk-1003", "quantity": 1}]
+  },
+  "inputResponses": {
+    "confirm": {
+      "action": "accept",
+      "content": {"confirm": true}
+    }
+  },
+  "requestState": "<echoed unchanged>"
+}
+
+=== MCP server log
+tools/call get_order_status caller=cus-001 -> GET /orders/ord-5003 200
+tools/call get_order_status caller=cus-001 ord-5002 not theirs
+tools/call place_order caller=cus-001 input_required
+tools/call place_order caller=cus-001 -> POST /orders 201
+token refused: DecodeError
+
+=== MCP client output
+1. no token: 401
+   www-authenticate: Bearer error="invalid_token",
+       error_description="Authentication required", resource_metadata="h
+       ttp://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp"
+2. http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp
+   {"resource": "http://127.0.0.1:8010/mcp", "authorization_servers":
+       ["http://127.0.0.1:8080/realms/harbor"], "scopes_supported":
+       ["orders:read", "orders:write"], "bearer_methods_supported":
+       ["header"], "resource_name": "Harbor Books MCP server"}
+3. authorization server http://127.0.0.1:8080/realms/harbor, PKCE
+    ['plain', 'S256']
+4. rosa signed in: token <JWT 947 chars>, aud http://127.0.0.1:8010/mcp,
+    scope 'orders:read orders:write', customer_id cus-001
+5. a token for another resource: 400 invalid_target
+6. tools/list: 7 tools
+   search_catalog    read-only
+   get_book          read-only
+   list_reviews      read-only
+   place_order       writes
+   get_order_status  read-only
+   get_cancellation  read-only
+   cancel_order      destructive
+7. get_order_status ord-5003: paid
+8. get_order_status ord-5002 (Sam's): is_error=True No order with id
+    ord-5002.
+9. resources/read harbor://books/bk-1001: Moby-Dick
+10. prompts/get where_is_my_order: The customer asks where order
+    ord-5003 is. Call get_order_st...
+11. place_order, which asks Rosa first:
+   form shown to Rosa: Order 1 x Frankenstein for 2299 cents?
+   ord-5005 for cus-001: placed, 2299 cents
+
+=== Agent Card
+{
+  "name": "Harbor Books fulfillment agent",
+  "description": "Arranges delivery of paid Harbor Book...",
+  "supportedInterfaces": [
+    {
+      "url": "http://127.0.0.1:8011/",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true
+  },
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "arrange-delivery",
+      "name": "Arrange delivery",
+      "description": "Ship one paid order. Send a data part wit...",
+      "tags": ["fulfillment", "shipping"],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    }
+  ]
+}
+
+=== SendStreamingMessage request
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "messageId": "c43e9e03-...",
+      "role": "ROLE_USER",
+      "parts": [
+        {
+          "text": "Please ship this order for Rosa."
+        },
+        {
+          "data": {
+            "order_id": "ord-5003",
+            "gift_wrap": true
+          }
+        }
+      ]
+    },
+    "configuration": {
+      "taskPushNotificationConfig": {
+        "url": "http://127.0.0.1:8012/a2a/push",
+        "token": "not-a-real-push-token"
+      }
+    }
+  }
+}
+
+=== A2A hand-off output
+response: 200 text/event-stream; charset=utf-8
+  task ccd89d0d TASK_STATE_SUBMITTED
+  status TASK_STATE_WORKING   Picking ord-5003
+  status TASK_STATE_WORKING   Packed and gift-wrapped ord-5003
+  artifact shipment {"order_id": "ord-5003", "tracking": "DP50030042",
+      "gift_wrap": true, "carrier": "demo-post"}
+  status TASK_STATE_COMPLETED ord-5003 handed to the carrier
+GetTask: TASK_STATE_COMPLETED, 1 artifact
+
+=== one SSE event
+data: {
+  "result": {
+    "statusUpdate": {
+      "taskId": "ccd89d0d-...",
+      "contextId": "a126b971-...",
+      "status": {
+        "state": "TASK_STATE_WORKING",
+        "message": {
+          "messageId": "460c1762-...",
+          "role": "ROLE_AGENT",
+          "parts": [{"text": "Picking ord-5003"}]
+        },
+        "timestamp": "2026-11-11T11:10:29.682800Z"
+      }
+    }
+  },
+  "id": 1,
+  "jsonrpc": "2.0"
+}
+
+=== a2a-reject.out
+card: Harbor Books fulfillment agent, skill arrange-delivery,
+    streaming=True, push=True
+request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage",
+    "params": {"message": {"messageId":
+    "4a4f1c18-bbb0-495c-8b2b-44b512b4d70c", "role": "ROLE_USER",
+    "parts": [{"text": "Please ship this order for Rosa."}, {"data":
+    {"order_id": "ord-5002", "gift_wrap": true}}]}, "configuration":
+    {"taskPushNotificationConfig": {"url":
+    "http://127.0.0.1:8012/a2a/push", "token":
+    "not-a-real-push-token"}}}}
+response: 200 text/event-stream; charset=utf-8
+  task a27ba05a TASK_STATE_SUBMITTED
+  status TASK_STATE_REJECTED  ord-5002 isn't a paid order waiting to
+      ship.
+GetTask: TASK_STATE_REJECTED, 0 artifact
+
+=== a2a-repeat.out
+card: Harbor Books fulfillment agent, skill arrange-delivery,
+    streaming=True, push=True
+request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage",
+    "params": {"message": {"messageId":
+    "78549f67-c0d9-4661-94e2-5dec5dc1a14a", "role": "ROLE_USER",
+    "parts": [{"text": "Please ship this order for Rosa."}, {"data":
+    {"order_id": "ord-5003", "gift_wrap": true}}]}, "configuration":
+    {"taskPushNotificationConfig": {"url":
+    "http://127.0.0.1:8012/a2a/push", "token":
+    "not-a-real-push-token"}}}}
+response: 200 text/event-stream; charset=utf-8
+  task 00105bde TASK_STATE_SUBMITTED
+  status TASK_STATE_REJECTED  ord-5003 isn't a paid order waiting to
+      ship.
+GetTask: TASK_STATE_REJECTED, 0 artifact
+
+=== push receiver log
+204 task ccd89d0d TASK_STATE_SUBMITTED
+204 task ccd89d0d TASK_STATE_WORKING
+204 task ccd89d0d TASK_STATE_WORKING
+204 task ccd89d0d artifact shipment
+204 task ccd89d0d TASK_STATE_COMPLETED
+204 task a27ba05a TASK_STATE_SUBMITTED
+204 task a27ba05a TASK_STATE_REJECTED
+204 task 00105bde TASK_STATE_SUBMITTED
+204 task 00105bde TASK_STATE_REJECTED
+

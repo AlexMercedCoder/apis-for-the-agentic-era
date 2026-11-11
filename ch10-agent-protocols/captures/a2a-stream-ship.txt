@@ -1,0 +1,10 @@
+data: {"result": {"task": {"id": "ccd89d0d-c908-4b63-a086-4b95b0321f4e", "contextId": "a126b971-fac0-442b-9fd3-f933c449a8c0", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "c43e9e03-857a-4152-8e4f-5dc6732d43a5", "contextId": "a126b971-fac0-442b-9fd3-f933c449a8c0", "taskId": "ccd89d0d-c908-4b63-a086-4b95b0321f4e", "role": "ROLE_USER", "parts": [{"text": "Please ship this order for Rosa."}, {"data": {"order_id": "ord-5003", "gift_wrap": true}}]}]}}, "id": 1, "jsonrpc": "2.0"}
+
+data: {"result": {"statusUpdate": {"taskId": "ccd89d0d-c908-4b63-a086-4b95b0321f4e", "contextId": "a126b971-fac0-442b-9fd3-f933c449a8c0", "status": {"state": "TASK_STATE_WORKING", "message": {"messageId": "460c1762-828f-44cc-a74a-81163b26492d", "role": "ROLE_AGENT", "parts": [{"text": "Picking ord-5003"}]}, "timestamp": "2026-11-11T11:10:29.682800Z"}}}, "id": 1, "jsonrpc": "2.0"}
+
+data: {"result": {"statusUpdate": {"taskId": "ccd89d0d-c908-4b63-a086-4b95b0321f4e", "contextId": "a126b971-fac0-442b-9fd3-f933c449a8c0", "status": {"state": "TASK_STATE_WORKING", "message": {"messageId": "e17b10a1-b775-4a0e-a67f-3fcb33151e7e", "role": "ROLE_AGENT", "parts": [{"text": "Packed and gift-wrapped ord-5003"}]}, "timestamp": "2026-11-11T11:10:30.084221Z"}}}, "id": 1, "jsonrpc": "2.0"}
+
+data: {"result": {"artifactUpdate": {"taskId": "ccd89d0d-c908-4b63-a086-4b95b0321f4e", "contextId": "a126b971-fac0-442b-9fd3-f933c449a8c0", "artifact": {"artifactId": "5a43f6a7-e2cd-4590-a514-9861bb34338a", "name": "shipment", "parts": [{"data": {"order_id": "ord-5003", "tracking": "DP50030042", "gift_wrap": true, "carrier": "demo-post"}}]}}}, "id": 1, "jsonrpc": "2.0"}
+
+data: {"result": {"statusUpdate": {"taskId": "ccd89d0d-c908-4b63-a086-4b95b0321f4e", "contextId": "a126b971-fac0-442b-9fd3-f933c449a8c0", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "ffdc576e-2205-4803-97cd-cec01eab816b", "role": "ROLE_AGENT", "parts": [{"text": "ord-5003 handed to the carrier"}]}, "timestamp": "2026-11-11T11:10:30.485582Z"}}}, "id": 1, "jsonrpc": "2.0"}
+

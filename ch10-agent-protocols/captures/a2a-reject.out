@@ -1,0 +1,6 @@
+card: Harbor Books fulfillment agent, skill arrange-delivery, streaming=True, push=True
+request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage", "params": {"message": {"messageId": "4a4f1c18-bbb0-495c-8b2b-44b512b4d70c", "role": "ROLE_USER", "parts": [{"text": "Please ship this order for Rosa."}, {"data": {"order_id": "ord-5002", "gift_wrap": true}}]}, "configuration": {"taskPushNotificationConfig": {"url": "http://127.0.0.1:8012/a2a/push", "token": "not-a-real-push-token"}}}}
+response: 200 text/event-stream; charset=utf-8
+  task a27ba05a TASK_STATE_SUBMITTED
+  status TASK_STATE_REJECTED  ord-5002 isn't a paid order waiting to ship.
+GetTask: TASK_STATE_REJECTED, 0 artifact

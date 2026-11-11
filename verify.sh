@@ -537,6 +537,59 @@ mine = x402_local.payment_required('u', '10000', 'e')
 assert d['x402Version'] == 2 and set(d['accepts'][0]) == set(mine['accepts'][0])
 \""
 
+# Chapter 10: Harbor's MCP server behind Keycloak, and an A2A hand-off.
+# Needs Docker (pulls quay.io/keycloak/keycloak:26.8.2 on first run).
+CH10="$TMP/ch10"
+check "ch10: run.sh completes" env OUT="$CH10" ch10-agent-protocols/run.sh
+check "ch10: 401 points to metadata; Keycloak binds the token to /mcp" \
+  bash -c "grep -q '1. no token: 401' '$CH10/mcp-client.out' &&
+           grep -q 'oauth-protected-resource/mcp' '$CH10/mcp-client.out' &&
+           grep -q '\"orders:read\", \"orders:write\"' '$CH10/mcp-client.out' &&
+           grep -q 'aud http://127.0.0.1:8010/mcp' '$CH10/mcp-client.out' &&
+           grep -q 'another resource: 400 invalid_target' '$CH10/mcp-client.out' &&
+           [ \"\$(cat '$CH10/mcp-bad-token.out')\" = 401 ]"
+check "ch10: seven tools from Chapter 3's contract, annotated by method" \
+  bash -c "grep -q 'tools/list: 7 tools' '$CH10/mcp-client.out' &&
+           grep -qE 'place_order +writes' '$CH10/mcp-client.out' &&
+           grep -qE 'cancel_order +destructive' '$CH10/mcp-client.out' &&
+           grep -qE 'get_book +read-only' '$CH10/mcp-client.out'"
+check "ch10: Rosa reads her order; Sam's looks missing" \
+  bash -c "grep -q 'ord-5003: paid' '$CH10/mcp-client.out' &&
+           grep -q 'is_error=True No order with id ord-5002.' '$CH10/mcp-client.out' &&
+           grep -q 'ord-5002 not theirs' '$CH10/mcp-server.log'"
+check "ch10: 2026-07-28 on every request; server/discover first" \
+  bash -c "head -1 '$CH10/mcp-wire.jsonl' | grep -q '\"method\": \"server/discover\"' &&
+           [ \"\$(grep -c '\"dir\": \"send\"' '$CH10/mcp-wire.jsonl')\" = \
+             \"\$(grep -c 'io.modelcontextprotocol/protocolVersion\": \"2026-07-28' '$CH10/mcp-wire.jsonl')\" ] &&
+           ! grep -q '\"initialize\"' '$CH10/mcp-wire.jsonl'"
+check "ch10: place_order asks first, then places one order" \
+  bash -c "grep -q 'place_order caller=cus-001 input_required' '$CH10/mcp-server.log' &&
+           grep -q 'POST /orders 201' '$CH10/mcp-server.log' &&
+           grep -q 'ord-5005 for cus-001: placed, 2299 cents' '$CH10/mcp-client.out'"
+check "ch10: the confirmation's state can't be tampered with or reused" \
+  bash -c "cd ch10-agent-protocols && uv run -q python -c \"
+import harbor_mcp as m
+s = m.seal({'sub': 'a', 'call': 'x', 'exp': 9999999999, 'key': 'k'})
+assert m.unseal(s)['key'] == 'k'
+bad = s[:-4] + ('AAAA' if not s.endswith('AAAA') else 'BBBB')
+try:
+    m.unseal(bad); raise SystemExit('tampered state accepted')
+except ValueError:
+    pass
+\""
+check "ch10: A2A task streams to completed with a shipment artifact" \
+  bash -c "grep -q 'response: 200 text/event-stream' '$CH10/a2a-ship.out' &&
+           grep -q 'TASK_STATE_COMPLETED ord-5003 handed to the carrier' '$CH10/a2a-ship.out' &&
+           grep -q 'artifact shipment' '$CH10/a2a-ship.out' &&
+           grep -q '\"skills\"' '$CH10/agent-card.json'"
+check "ch10: shipped and repeated hand-offs are rejected" \
+  bash -c "grep -q 'TASK_STATE_REJECTED  ord-5002' '$CH10/a2a-reject.out' &&
+           grep -q 'TASK_STATE_REJECTED  ord-5003' '$CH10/a2a-repeat.out'"
+check "ch10: pushes reach the receiver, ending in completed" \
+  bash -c "grep -qE '204 task [0-9a-f]{8} TASK_STATE_COMPLETED' '$CH10/push-receiver.log'"
+check "ch10: printed listings fit 72 columns; no access token captured" \
+  bash -c "[ -s '$CH10/listings.txt' ] && ! grep -rq 'eyJhbGci' '$CH10'"
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

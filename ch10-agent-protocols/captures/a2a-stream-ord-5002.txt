@@ -1,0 +1,4 @@
+data: {"result": {"task": {"id": "a27ba05a-516a-4367-8fcc-93835a6d5c6c", "contextId": "a9d9ec7e-5c19-4474-8645-b3c4c027c0cc", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "4a4f1c18-bbb0-495c-8b2b-44b512b4d70c", "contextId": "a9d9ec7e-5c19-4474-8645-b3c4c027c0cc", "taskId": "a27ba05a-516a-4367-8fcc-93835a6d5c6c", "role": "ROLE_USER", "parts": [{"text": "Please ship this order for Rosa."}, {"data": {"order_id": "ord-5002", "gift_wrap": true}}]}]}}, "id": 1, "jsonrpc": "2.0"}
+
+data: {"result": {"statusUpdate": {"taskId": "a27ba05a-516a-4367-8fcc-93835a6d5c6c", "contextId": "a9d9ec7e-5c19-4474-8645-b3c4c027c0cc", "status": {"state": "TASK_STATE_REJECTED", "message": {"messageId": "520bbd2c-5e70-4da4-b828-75a8788a3ddc", "role": "ROLE_AGENT", "parts": [{"text": "ord-5002 isn't a paid order waiting to ship."}]}, "timestamp": "2026-11-11T11:10:30.858215Z"}}}, "id": 1, "jsonrpc": "2.0"}
+

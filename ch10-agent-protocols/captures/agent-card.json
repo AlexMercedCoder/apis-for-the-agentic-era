@@ -1,0 +1,43 @@
+{
+  "name": "Harbor Books fulfillment agent",
+  "description": "Arranges delivery of paid Harbor Books orders: picks, packs, optionally gift-wraps, and books the carrier.",
+  "supportedInterfaces": [
+    {
+      "url": "http://127.0.0.1:8011/",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "arrange-delivery",
+      "name": "Arrange delivery",
+      "description": "Ship one paid order. Send a data part with order_id and, optionally, gift_wrap: true.",
+      "tags": [
+        "fulfillment",
+        "shipping"
+      ],
+      "examples": [
+        "{\"order_id\": \"ord-5003\", \"gift_wrap\": true}"
+      ],
+      "inputModes": [
+        "application/json"
+      ],
+      "outputModes": [
+        "application/json"
+      ]
+    }
+  ]
+}
