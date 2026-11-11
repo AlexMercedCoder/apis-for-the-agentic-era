@@ -58,8 +58,9 @@ check "ch01: stand-in emits a get_book tool_use block" \
 check "ch01: host rejects a book_id the schema forbids" \
   bash -c "cd ch01-what-is-an-api && uv run -q python -c \"
 import agent
-result, is_error = agent.run_tool('get_book', {'book_id': '../admin'})
-assert is_error and result['error'] == 'invalid_argument', result
+for bad in ('../admin', 'bk-1001\\n'):
+    result, is_error = agent.run_tool('get_book', {'book_id': bad})
+    assert is_error and result['error'] == 'invalid_argument', (bad, result)
 \""
 check "ch01: all three callers sent the same request line" \
   bash -c "[ \$(grep -c '\"GET /books/bk-1001 HTTP/1.1\" 200' '$CH01/server-log.txt') -eq 3 ]"

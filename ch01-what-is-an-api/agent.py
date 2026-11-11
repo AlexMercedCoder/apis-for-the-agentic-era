@@ -120,7 +120,7 @@ def run_tool(name, tool_input):
     if name != "get_book":
         return {"error": f"unknown tool {name}"}, True
     book_id = tool_input.get("book_id", "")
-    if not isinstance(book_id, str) or not BOOK_ID.match(book_id):
+    if not isinstance(book_id, str) or not BOOK_ID.fullmatch(book_id):
         return {"error": "invalid_argument",
                 "message": "book_id must match ^bk-[0-9]{4}$"}, True
     response = httpx.get(
