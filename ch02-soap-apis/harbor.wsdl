@@ -76,6 +76,15 @@
         </xs:complexType>
       </xs:element>
 
+      <xs:element name="InvalidArgument">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="field" type="xs:string"/>
+            <xs:element name="pattern" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
       <xs:element name="NotFound">
         <xs:complexType>
           <xs:sequence>
@@ -102,6 +111,9 @@
   <message name="NotFoundFault">
     <part name="fault" element="h:NotFound"/>
   </message>
+  <message name="InvalidArgumentFault">
+    <part name="fault" element="h:InvalidArgument"/>
+  </message>
 
   <portType name="OrdersPortType">
     <operation name="GetOrderStatus">
@@ -111,6 +123,7 @@
       <input message="h:GetOrderStatusInput"/>
       <output message="h:GetOrderStatusOutput"/>
       <fault name="NotFound" message="h:NotFoundFault"/>
+      <fault name="InvalidArgument" message="h:InvalidArgumentFault"/>
     </operation>
     <operation name="GetBook">
       <documentation>Look up one book in the catalog by its ID.
@@ -118,6 +131,7 @@
       <input message="h:GetBookInput"/>
       <output message="h:GetBookOutput"/>
       <fault name="NotFound" message="h:NotFoundFault"/>
+      <fault name="InvalidArgument" message="h:InvalidArgumentFault"/>
     </operation>
   </portType>
 
@@ -132,6 +146,9 @@
       <fault name="NotFound">
         <soap:fault name="NotFound" use="literal"/>
       </fault>
+      <fault name="InvalidArgument">
+        <soap:fault name="InvalidArgument" use="literal"/>
+      </fault>
     </operation>
     <operation name="GetBook">
       <soap:operation
@@ -140,6 +157,9 @@
       <output><soap:body use="literal"/></output>
       <fault name="NotFound">
         <soap:fault name="NotFound" use="literal"/>
+      </fault>
+      <fault name="InvalidArgument">
+        <soap:fault name="InvalidArgument" use="literal"/>
       </fault>
     </operation>
   </binding>

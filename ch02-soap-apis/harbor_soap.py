@@ -72,6 +72,15 @@ def not_found(kind, wanted, hint):
     return Fault("soap:Client", f"No {kind} with id {wanted}.", detail)
 
 
+def invalid(field, value, pattern):
+    """SOAP 1.1 section 4.4: a fault about the Body carries a detail."""
+    detail = ET.Element(q(H, "InvalidArgument"))
+    leaf(detail, "field", field)
+    leaf(detail, "pattern", pattern)
+    return Fault("soap:Client",
+                 f"{field} {value!r} does not match {pattern}.", detail)
+
+
 def read_username_token(header):
     """Return (username, password) from a wsse:Security header, if any."""
     if header is None:
@@ -103,8 +112,7 @@ def check_headers(header):
 def get_book(op, _token):
     book_id = op.findtext(q(H, "bookId"), "")
     if not BOOK_ID.fullmatch(book_id):
-        raise Fault("soap:Client",
-                    f"bookId {book_id!r} does not match bk-[0-9]{{4}}.")
+        raise invalid("bookId", book_id, BOOK_ID.pattern)
     book = BOOKS.get(book_id)
     if book is None:
         raise not_found("book", book_id,
@@ -125,8 +133,7 @@ def get_order_status(op, token):
                     "GetOrderStatus needs a valid partner UsernameToken.")
     order_id = op.findtext(q(H, "orderId"), "")
     if not ORDER_ID.fullmatch(order_id):
-        raise Fault("soap:Client",
-                    f"orderId {order_id!r} does not match ord-[0-9]{{4}}.")
+        raise invalid("orderId", order_id, ORDER_ID.pattern)
     order = ORDERS.get(order_id)
     if order is None:
         raise not_found("order", order_id,

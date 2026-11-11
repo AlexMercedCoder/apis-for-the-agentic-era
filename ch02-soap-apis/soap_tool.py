@@ -17,13 +17,14 @@ from zeep.exceptions import Fault
 from zeep.wsse.username import UsernameToken
 
 HERE = Path(__file__).resolve().parent
-WSDL_URL = "http://127.0.0.1:8002/harbor/soap?wsdl"
+WSDL = HERE / "harbor.wsdl"  # the pinned contract; its soap:address
+                             # names the server
 NS = {"w": "http://schemas.xmlsoap.org/wsdl/",
       "xs": "http://www.w3.org/2001/XMLSchema",
       "h": "http://harbor.example/orders"}
 
 
-def build_tool(wsdl_path=HERE / "harbor.wsdl"):
+def build_tool(wsdl_path=WSDL):
     """Turn the WSDL's GetOrderStatus contract into a tool definition."""
     wsdl = ET.parse(wsdl_path).getroot()
     doc = wsdl.findtext(
@@ -64,7 +65,7 @@ _client = None
 def soap_client():
     global _client
     if _client is None:
-        _client = Client(WSDL_URL, wsse=UsernameToken("partner-demo",
+        _client = Client(str(WSDL), wsse=UsernameToken("partner-demo",
                                                       "not-a-real-secret"))
     return _client
 
@@ -78,12 +79,14 @@ def run_tool(arguments):
     try:
         o = soap_client().service.GetOrderStatus(orderId=order_id)
     except Fault as fault:
-        result = {"error": "order_not_found"
-                  if fault.detail is not None else "soap_fault",
+        detail = fault.detail[0] if fault.detail is not None else None
+        kind = detail.tag.split("}")[1] if detail is not None else None
+        result = {"error": {"NotFound": "order_not_found",
+                            "InvalidArgument": "invalid_argument"}
+                  .get(kind, "soap_fault"),
                   "message": fault.message}
-        if fault.detail is not None:
-            result["hint"] = fault.detail.findtext(
-                "h:NotFound/h:hint", namespaces=NS)
+        if kind == "NotFound":
+            result["hint"] = detail.findtext("h:hint", namespaces=NS)
         return result, True
     return {"order_id": o.orderId, "status": o.status,
             "placed_at": o.placedAt.isoformat(),

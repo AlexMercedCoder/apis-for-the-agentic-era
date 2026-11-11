@@ -85,11 +85,13 @@ check "ch02: zeep reads both operations from the WSDL" \
            grep -q 'GetBook(bookId: ns0:BookId)' '$CH02/zeep-inspect.out'"
 check "ch02: generated client prints the order and the fault hint" \
   bash -c "grep -qx 'ord-5002: shipped since 2026-11-03 09:41:52+00:00, 48.97 USD' '$CH02/client.out' &&
-           grep -qx 'Hint: Order IDs run from ord-5001 to ord-5004.' '$CH02/client-not-found.out' &&
-           grep -q 'does not match ord-\[0-9\]{4}' '$CH02/client-bad-id.out'"
-check "ch02: every operation is a POST to one URL" \
+           grep -qx '  hint: Order IDs run from ord-5001 to ord-5004.' '$CH02/client-not-found.out' &&
+           grep -q 'does not match ord-\[0-9\]{4}' '$CH02/client-bad-id.out' &&
+           grep -qx '  field: orderId' '$CH02/client-bad-id.out'"
+check "ch02: every operation is a POST to one URL; no WSDL fetches" \
   bash -c "[ \$(grep -c '\"POST /harbor/soap HTTP/1.1\"' '$CH02/server-log.txt') -eq 10 ] &&
-           grep -q 'action=GetBook' '$CH02/server-log.txt'"
+           grep -q 'action=GetBook' '$CH02/server-log.txt' &&
+           ! grep -q 'GET /harbor/soap?wsdl' '$CH02/server-log.txt'"
 check "ch02: tool schema carries the WSDL's pattern and statuses" \
   bash -c "cd ch02-soap-apis && uv run -q python -c \"
 import soap_tool as t

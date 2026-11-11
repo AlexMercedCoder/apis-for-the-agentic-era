@@ -1,1 +1,3 @@
 Fault soap:Client: orderId '5002' does not match ord-[0-9]{4}.
+  field: orderId
+  pattern: ord-[0-9]{4}

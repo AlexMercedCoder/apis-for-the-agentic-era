@@ -8,6 +8,7 @@ Global elements:
      ns0:GetBookResponse(bookId: ns0:BookId, title: xsd:string, author: xsd:string, priceCents: xsd:int, currency: xsd:string, inStock: xsd:int)
      ns0:GetOrderStatus(orderId: ns0:OrderId)
      ns0:GetOrderStatusResponse(orderId: ns0:OrderId, status: ns0:OrderStatus, placedAt: xsd:dateTime, totalCents: xsd:int, currency: xsd:string)
+     ns0:InvalidArgument(field: xsd:string, pattern: xsd:string)
      ns0:NotFound(id: xsd:string, hint: xsd:string)
      
 

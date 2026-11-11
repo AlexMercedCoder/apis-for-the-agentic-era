@@ -3,21 +3,24 @@
     uv run python client.py ord-5002            # one order's status
     uv run python client.py ord-9999            # a SOAP fault
     uv run python client.py ord-5002 --history  # print both envelopes
+
+--history prints the envelopes as sent, including the UsernameToken's
+password. Never log real envelopes that carry a token this way.
 """
 
 import sys
+from pathlib import Path
 
 from zeep import Client
 from zeep.exceptions import Fault
 from zeep.plugins import HistoryPlugin
 from zeep.wsse.username import UsernameToken
 
-WSDL = "http://127.0.0.1:8002/harbor/soap?wsdl"
-NS = "http://harbor.example/orders"
+WSDL = Path(__file__).with_name("harbor.wsdl")  # the pinned contract
 
 history = HistoryPlugin()
 client = Client(
-    WSDL,
+    str(WSDL),
     wsse=UsernameToken("partner-demo", "not-a-real-secret"),
     plugins=[history],
 )
@@ -29,9 +32,9 @@ try:
           f"{order.totalCents / 100:.2f} {order.currency}")
 except Fault as fault:
     print(f"Fault {fault.code}: {fault.message}")
-    if fault.detail is not None:
-        hint = fault.detail.findtext(f"{{{NS}}}NotFound/{{{NS}}}hint")
-        print("Hint:", hint)
+    for item in fault.detail if fault.detail is not None else []:
+        for field in item:
+            print(f"  {field.tag.split('}')[1]}: {field.text}")
 
 if "--history" in sys.argv:
     from lxml import etree

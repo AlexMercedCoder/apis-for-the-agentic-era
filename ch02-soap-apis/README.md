@@ -12,7 +12,8 @@ agent tool.
   and `zeep==4.3.3`, pinned in `pyproject.toml` and locked in `uv.lock`
   (with lxml 6.1.3)
 
-No account and no API key. Nothing leaves `127.0.0.1`.
+No account and no API key. Nothing leaves `127.0.0.1`. Run it from inside
+the repository: the server reads `../harbor-data/`.
 
 The partner login, `partner-demo` / `not-a-real-secret`, is a placeholder
 that protects nothing. Override it with `HARBOR_PARTNER_USER` and
@@ -26,8 +27,8 @@ as plain text, which is acceptable only over TLS.
 | `harbor.wsdl` | the contract: WSDL 1.1, SOAP 1.1 over HTTP, document/literal wrapped; `GetOrderStatus` (needs a WS-Security UsernameToken) and `GetBook` (public) |
 | `harbor_soap.py` | the service, standard library only, on `127.0.0.1:8002`: `GET /harbor/soap?wsdl` and `POST /harbor/soap`; data from `../harbor-data/` |
 | `requests/*.xml` | hand-written envelopes for `curl` |
-| `client.py` | the client zeep generates from the WSDL; `--history` prints the envelopes it sent and received |
-| `soap_tool.py` | `get_order_status` as an agent tool, built from the WSDL's documentation, pattern, and status values; the host calls SOAP and returns JSON |
+| `client.py` | the client Zeep generates from the pinned `harbor.wsdl` (the WSDL's `soap:address` names the server); `--history` prints the envelopes it sent and received, **including the UsernameToken password**, so never use it with real credentials |
+| `soap_tool.py` | `get_order_status` as an agent tool, built from the WSDL's documentation, pattern, and status values; the host loads the same pinned WSDL, calls SOAP, and returns JSON |
 | `run.sh` | starts the server, runs every listing, writes `captures/`, stops the server |
 | `captures/` | the exact output the chapter prints |
 
@@ -52,9 +53,10 @@ curl -v http://127.0.0.1:8002/harbor/soap \
   --data-binary @requests/get-order-status.xml
 uv run python -m zeep harbor.wsdl
 uv run python client.py ord-5002
-uv run python client.py ord-9999      # soap:Client fault with a hint
-uv run python client.py 5002          # zeep doesn't check xs:pattern;
-                                      # the server's fault does
+uv run python client.py ord-9999      # soap:Client fault, NotFound
+uv run python client.py 5002          # Zeep doesn't check xs:pattern;
+                                      # the server's InvalidArgument
+                                      # fault does
 uv run python soap_tool.py
 grep POST captures/server-log.txt | head -3   # after ./run.sh
 ```
@@ -69,13 +71,14 @@ ord-5002: shipped since 2026-11-03 09:41:52+00:00, 48.97 USD
 
 | `faultcode` | When |
 |---|---|
-| `soap:Client` | unknown order or book (with a `NotFound` detail and a hint), an ID that fails the WSDL's pattern, malformed XML |
+| `soap:Client` | unknown order or book (`NotFound` detail with a hint), an ID that fails the WSDL's pattern (`InvalidArgument` detail with the field and pattern), malformed XML |
 | `soap:MustUnderstand` | a header block marked `mustUnderstand="1"` other than `wsse:Security` |
 | `soap:VersionMismatch` | a SOAP 1.2 envelope |
 | `wsse:FailedAuthentication` | `GetOrderStatus` without the partner's UsernameToken |
 | `wsse:UnsupportedSecurityToken` | a UsernameToken whose password isn't `PasswordText` |
 
-Every fault is returned with HTTP 500, as SOAP 1.1 § 6.2 requires.
+Every fault is returned with HTTP 500, as SOAP 1.1 § 6.2 requires. Faults
+about the body carry a `detail`, and header faults don't, as § 4.4 requires.
 
 ## Captures
 
