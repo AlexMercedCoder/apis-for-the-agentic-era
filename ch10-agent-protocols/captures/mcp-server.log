@@ -1,0 +1,5 @@
+tools/call get_order_status caller=cus-001 -> GET /orders/ord-5003 200
+tools/call get_order_status caller=cus-001 ord-5002 not theirs
+tools/call place_order caller=cus-001 input_required
+tools/call place_order caller=cus-001 -> POST /orders 201
+token refused: DecodeError
