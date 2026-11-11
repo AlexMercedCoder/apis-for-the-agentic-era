@@ -427,10 +427,14 @@ check "ch07: ADBC aggregate returns 8 books, bk-1003 first" \
 check "ch07: agent tool result is 512 bytes against 173,831 of raw JSON" \
   bash -c "grep -qx 'tool result: 512 bytes of JSON, 8 rows' '$CH07/agent-tool.out' &&
            grep -qx 'raw lines:   874 rows, 173,831 bytes of JSON, 65,808 bytes as Arrow IPC' '$CH07/agent-tool.out'"
-check "ch07: agent principal reads, catalog and store refuse its writes" \
+check "ch07: agent reads one table; catalog and store refuse the rest" \
   bash -c "grep -qx 'load table: ok, 6665 rows read' '$CH07/agent-access.out' &&
-           grep -q 'is not authorized' '$CH07/agent-access.out' &&
-           grep -q 'ACCESS_DENIED' '$CH07/agent-access.out'"
+           grep -qx 'load harbor.customers refused by the catalog: ForbiddenException' '$CH07/agent-access.out' &&
+           grep -q 'for op ADD_TABLE_SCHEMA' '$CH07/agent-access.out' &&
+           grep -qx '  AWS Error ACCESS_DENIED during CreateMultipartUpload' '$CH07/agent-access.out' &&
+           grep -qx '  AWS Error ACCESS_DENIED during ListObjectsV2' '$CH07/agent-access.out'"
+check "ch07: Flight SQL server refuses local file access from SQL" \
+  bash -c "cd ch07-data-standards && grep -q 'SET enable_external_access = false' flight_sql_server.py"
 
 echo
 echo "$PASS passed, $FAIL failed"

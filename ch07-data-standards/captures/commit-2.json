@@ -15,22 +15,22 @@
       {
         "type": "assert-ref-snapshot-id",
         "ref": "main",
-        "snapshot-id": 5158995254800868855
+        "snapshot-id": 4946583619953961118
       },
       {
         "type": "assert-table-uuid",
-        "uuid": "5c406dc5-fd71-4f2c-868a-79263f7e1c7e"
+        "uuid": "b5ca0d89-0cc9-4138-9e1e-17794e4b653a"
       }
     ],
     "updates": [
       {
         "action": "add-snapshot",
         "snapshot": {
-          "snapshot-id": 294802231122253903,
-          "parent-snapshot-id": 5158995254800868855,
+          "snapshot-id": 6438510680871847256,
+          "parent-snapshot-id": 4946583619953961118,
           "sequence-number": 2,
-          "timestamp-ms": 1794380887734,
-          "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-294802231122253903-0-ec7f2b98-7133-4bfd-96ce-2d4c1280bf8c.avro",
+          "timestamp-ms": 1794382514720,
+          "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-6438510680871847256-0-d72d50e1-5d9c-472a-bd97-bdd24662d1a9.avro",
           "summary": {
             "operation": "append",
             "added-files-size": "3199",
@@ -50,13 +50,13 @@
         "action": "set-snapshot-ref",
         "ref-name": "main",
         "type": "branch",
-        "snapshot-id": 294802231122253903
+        "snapshot-id": 6438510680871847256
       }
     ]
   },
   "status": 200,
   "response": {
-    "metadata-location": "s3://harbor-lake/harbor/order_lines/metadata/00002-416c908d-575f-4e8e-96c0-e01600f81415.metadata.json",
+    "metadata-location": "s3://harbor-lake/harbor/order_lines/metadata/00002-e55dbdd9-497b-42d3-8753-474e490ad867.metadata.json",
     "metadata": "..."
   }
 }

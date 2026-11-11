@@ -47,26 +47,26 @@ run; row counts, batch sizes, and query results don't.
 | File | What it is |
 |---|---|
 | `docker-compose.yml` | RustFS and Polaris, bound to `127.0.0.1` |
-| `setup_catalog.py` | creates bucket `harbor-lake`, catalog `harbor` (S3 storage with STS, so Polaris can vend credentials), the read-only catalog role `order_history_reader` (`TABLE_READ_DATA`, `NAMESPACE_LIST`, `TABLE_LIST`), principal role `analytics_agent_role`, and principal `analytics-agent` |
+| `setup_catalog.py` | creates bucket `harbor-lake`, catalog `harbor` (S3 storage with STS, so Polaris can vend credentials), the catalog role `order_history_reader` (`NAMESPACE_LIST` and `TABLE_LIST` on the catalog), principal role `analytics_agent_role`, and principal `analytics-agent`; `--grant harbor.order_lines` adds `TABLE_READ_DATA` on that one table once it exists |
 | `order_history.py` | builds the table's rows: 4,000 generated, made-up orders (`ord-1000` to `ord-4999`, January 2025 to October 2026, fixed seed) plus the four orders in `../harbor-data/orders.json`; 6,662 order lines |
 | `harbor_catalog.py` | opens the catalog with PyIceberg, through the proxy by default, asking for vended credentials |
-| `load_orders.py` | creates `harbor.order_lines` and loads it in two commits |
+| `load_orders.py` | creates `harbor.order_lines` and loads it in two commits, and creates `harbor.customers` from `../harbor-data/customers.json`, a table the agent is not granted |
 | `commit_conflict.py` | two writers load the same snapshot and each append an order; the second commit gets 409 and PyIceberg retries it |
 | `logproxy.py` | logs every catalog exchange as JSON lines, with tokens and storage secrets redacted |
 | `extract_commits.py` | writes each commit exchange from the log to `captures/commit-N.json` |
 | `catalog_requests.sh`, `redact.py` | `curl -v` of `GET /v1/config` and of a table load with `X-Iceberg-Access-Delegation: vended-credentials` |
 | `proto/FlightSql.proto` | the Flight SQL protocol, pinned from Apache Arrow 26.0.1; `run.sh` compiles it into `gen/` |
-| `flight_sql_server.py` | Harbor's Flight SQL server: `GetFlightInfo` with `CommandStatementQuery` and `DoGet` with `TicketStatementQuery` only; reads the table as `analytics-agent` with vended credentials and runs the SQL in DuckDB over a table named `order_lines`; 2,048-row batches; no authentication on the Flight endpoint |
+| `flight_sql_server.py` | Harbor's Flight SQL server: `GetFlightInfo` with `CommandStatementQuery` and `DoGet` with `TicketStatementQuery` only; reads the table as `analytics-agent` with vended credentials and runs the SQL in DuckDB over a table named `order_lines`, with DuckDB's external access (local files, network) turned off before any query; 2,048-row batches; no authentication on the Flight endpoint, so it binds `127.0.0.1` only |
 | `flight_client.py` | one query with PyArrow's plain Flight client, printing the command, `FlightInfo`, the ticket, and each batch |
 | `adbc_client.py` | an aggregate query through the ADBC Flight SQL driver |
 | `agent_tool.py` | the `sales_by_book` tool (Messages API format); `--definition` prints it; without flags it runs the tool for Q3 2026 and prints the sizes of its result and of the raw rows |
-| `agent_access.py` | what the agent principal can do: read; a schema change refused by the catalog (403); a write with its vended credentials refused by the object store |
+| `agent_access.py` | what the agent principal can do: read `order_lines`; loading `harbor.customers` and a schema change refused by the catalog (403); a write with its vended credentials, and a listing of `harbor/customers`, refused by the object store |
 | `run.sh` | runs everything and writes `captures/` |
 
 ## What the run shows
 
 ```text
-pyiceberg.table: Commit failed due to a concurrent update, retrying (1/4) in 102 ms
+pyiceberg.table: Commit failed due to a concurrent update, retrying (1/4) in 106 ms
 DoGet batch 1: 2048 rows
 DoGet batch 2: 868 rows
 tool result: 512 bytes of JSON, 8 rows
@@ -74,8 +74,16 @@ raw lines:   874 rows, 173,831 bytes of JSON, 65,808 bytes as Arrow IPC
 ```
 
 `commit-4.json` is the 409: `Requirement failed: branch main has changed`.
-`agent-access.out` shows `ForbiddenException ... not authorized for op
-ADD_TABLE_SCHEMA` from Polaris and `ACCESS_DENIED` from RustFS.
+`agent-access.out` shows `ForbiddenException` from Polaris for
+`harbor.customers` and for `ADD_TABLE_SCHEMA`, and `ACCESS_DENIED` from
+RustFS for a write (`CreateMultipartUpload`) and a listing outside the
+table (`ListObjectsV2`).
+
+The local stack gives Polaris the object store's root key and allows the
+whole bucket. In production, give the catalog a role limited to its
+allowed locations, keep `allowedLocations` narrow, and never log a
+load-table response: its `config` and `storage-credentials` carry live
+secrets.
 
 ## Run it by hand
 

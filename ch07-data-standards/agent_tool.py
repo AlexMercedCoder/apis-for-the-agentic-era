@@ -1,7 +1,7 @@
 """An analytics tool for a model, backed by Flight SQL.
 
-The model gets sales_by_book with two dates. The host turns them into a
-fixed, parameterized query, runs it over Flight SQL, and returns the
+The model gets sales_by_book with two dates. The host validates them as
+ISO dates and fills them into a fixed query, runs it over Flight SQL, and returns the
 small aggregate as the tool result. The script also prints what the
 same quarter's raw order lines would cost as a JSON tool result.
 """

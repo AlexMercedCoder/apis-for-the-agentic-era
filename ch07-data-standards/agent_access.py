@@ -1,11 +1,13 @@
 """What the analytics agent's principal can and can't do.
 
-The principal holds only order_history_reader (TABLE_READ_DATA,
-NAMESPACE_LIST, TABLE_LIST). It loads the table and reads it with the
-credentials the catalog vends. A commit (here a schema change) is
-refused by the catalog, and a write with the vended credentials is
-refused by the object store.
+The principal holds only order_history_reader: NAMESPACE_LIST and
+TABLE_LIST on the catalog, TABLE_READ_DATA on harbor.order_lines. It
+loads that table and reads it with the credentials the catalog vends.
+The catalog refuses another table and a commit (here a schema change);
+the object store refuses a write with the vended credentials and a read
+outside the table's location.
 """
+import re
 import textwrap
 
 from pyiceberg.exceptions import ForbiddenError
@@ -17,6 +19,13 @@ from pyarrow import fs
 catalog = open_catalog(agent_credential(), name="analytics-agent")
 table = catalog.load_table("harbor.order_lines")
 print("load table: ok,", table.scan().to_arrow().num_rows, "rows read")
+
+try:
+    catalog.load_table("harbor.customers")
+    print("load harbor.customers: allowed")
+except ForbiddenError as err:
+    print("load harbor.customers refused by the catalog:",
+          str(err).split(":")[0])
 
 try:
     with table.update_schema() as update:
@@ -39,6 +48,15 @@ try:
     print("write with the vended credentials: allowed")
 except OSError as err:
     print("write with the vended credentials refused by the store:")
-    detail = str(err).split("in bucket 'harbor-lake': ")[-1]
-    print(textwrap.fill(detail.split(" operation")[0], 68,
-                        initial_indent="  ", subsequent_indent="  "))
+    found = re.search(r"AWS Error \w+ during \w+", str(err))
+    print("  " + (found.group(0) if found else str(err)[:66]))
+
+try:
+    s3.get_file_info(fs.FileSelector("harbor-lake/harbor/customers",
+                                      recursive=True))
+    print("list harbor/customers with the vended credentials: allowed")
+except OSError as err:
+    print("list harbor/customers with the vended credentials refused "
+          "by the store:")
+    found = re.search(r"AWS Error \w+ during \w+", str(err))
+    print("  " + (found.group(0) if found else str(err)[:66]))

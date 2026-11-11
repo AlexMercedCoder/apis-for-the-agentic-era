@@ -45,6 +45,7 @@ rm -f "$OUT/catalog-log.jsonl"
 uv run -q python logproxy.py "$OUT/catalog-log.jsonl" & PIDS+=($!)
 wait_port 8180
 PYICEBERG_MAX_WORKERS=2 uv run -q python load_orders.py > "$OUT/load.out"
+uv run -q python setup_catalog.py --grant harbor.order_lines >> "$OUT/setup.out"
 uv run -q python commit_conflict.py > "$OUT/conflict.out" 2>&1
 uv run -q python extract_commits.py "$OUT/catalog-log.jsonl" "$OUT" \
   > "$OUT/commits.out"

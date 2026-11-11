@@ -1,11 +1,11 @@
 {
-    "metadata-location": "s3://harbor-lake/harbor/order_lines/metadata/00004-9580315f-0a8f-4408-8399-2dae371e1aa2.metadata.json",
+    "metadata-location": "s3://harbor-lake/harbor/order_lines/metadata/00004-b9e7df45-02b4-4296-af38-6e1a9ea0c826.metadata.json",
     "metadata": {
         "format-version": 2,
-        "table-uuid": "5c406dc5-fd71-4f2c-868a-79263f7e1c7e",
+        "table-uuid": "b5ca0d89-0cc9-4138-9e1e-17794e4b653a",
         "location": "s3://harbor-lake/harbor/order_lines",
         "last-sequence-number": 4,
-        "last-updated-ms": 1794380941341,
+        "last-updated-ms": 1794382598476,
         "last-column-id": 8,
         "current-schema-id": 0,
         "schemas": [
@@ -80,21 +80,21 @@
             }
         ],
         "properties": {
-            "created-at": "2026-11-11T07:07:20.647801504Z",
+            "created-at": "2026-11-11T07:34:27.529874010Z",
             "write.parquet.compression-codec": "zstd"
         },
-        "current-snapshot-id": 5687804402348246837,
+        "current-snapshot-id": 8209533669307608351,
         "refs": {
             "main": {
-                "snapshot-id": 5687804402348246837,
+                "snapshot-id": 8209533669307608351,
                 "type": "branch"
             }
         },
         "snapshots": [
             {
                 "sequence-number": 1,
-                "snapshot-id": 5158995254800868855,
-                "timestamp-ms": 1794380863558,
+                "snapshot-id": 4946583619953961118,
+                "timestamp-ms": 1794382491243,
                 "summary": {
                     "operation": "append",
                     "added-files-size": "59693",
@@ -107,14 +107,14 @@
                     "total-position-deletes": "0",
                     "total-equality-deletes": "0"
                 },
-                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-5158995254800868855-0-cf32ef45-a046-46bd-bb3e-2bb023e21ca7.avro",
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-4946583619953961118-0-a4435bba-6630-417c-9781-b764c5b428d8.avro",
                 "schema-id": 0
             },
             {
                 "sequence-number": 2,
-                "snapshot-id": 294802231122253903,
-                "parent-snapshot-id": 5158995254800868855,
-                "timestamp-ms": 1794380887734,
+                "snapshot-id": 6438510680871847256,
+                "parent-snapshot-id": 4946583619953961118,
+                "timestamp-ms": 1794382514720,
                 "summary": {
                     "operation": "append",
                     "added-files-size": "3199",
@@ -127,14 +127,14 @@
                     "total-position-deletes": "0",
                     "total-equality-deletes": "0"
                 },
-                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-294802231122253903-0-ec7f2b98-7133-4bfd-96ce-2d4c1280bf8c.avro",
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-6438510680871847256-0-d72d50e1-5d9c-472a-bd97-bdd24662d1a9.avro",
                 "schema-id": 0
             },
             {
                 "sequence-number": 3,
-                "snapshot-id": 1070063223747273932,
-                "parent-snapshot-id": 294802231122253903,
-                "timestamp-ms": 1794380902887,
+                "snapshot-id": 588605387768089118,
+                "parent-snapshot-id": 6438510680871847256,
+                "timestamp-ms": 1794382566676,
                 "summary": {
                     "operation": "append",
                     "added-files-size": "3081",
@@ -147,14 +147,14 @@
                     "total-position-deletes": "0",
                     "total-equality-deletes": "0"
                 },
-                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-1070063223747273932-0-1daf4c9b-f845-4225-bb80-bac0ce3dd1fd.avro",
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-588605387768089118-0-2a2dd409-00b3-4633-9587-42065abc694f.avro",
                 "schema-id": 0
             },
             {
                 "sequence-number": 4,
-                "snapshot-id": 5687804402348246837,
-                "parent-snapshot-id": 1070063223747273932,
-                "timestamp-ms": 1794380941327,
+                "snapshot-id": 8209533669307608351,
+                "parent-snapshot-id": 588605387768089118,
+                "timestamp-ms": 1794382598460,
                 "summary": {
                     "operation": "append",
                     "added-files-size": "3058",
@@ -167,7 +167,7 @@
                     "total-position-deletes": "0",
                     "total-equality-deletes": "0"
                 },
-                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-5687804402348246837-0-f54c1c20-fdc1-4b13-9122-02bbdcf2c580.avro",
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-8209533669307608351-0-57c712fa-e9db-4b13-8a48-49f297b1591b.avro",
                 "schema-id": 0
             }
         ],
@@ -175,38 +175,38 @@
         "partition-statistics": [],
         "snapshot-log": [
             {
-                "timestamp-ms": 1794380863558,
-                "snapshot-id": 5158995254800868855
+                "timestamp-ms": 1794382491243,
+                "snapshot-id": 4946583619953961118
             },
             {
-                "timestamp-ms": 1794380887734,
-                "snapshot-id": 294802231122253903
+                "timestamp-ms": 1794382514720,
+                "snapshot-id": 6438510680871847256
             },
             {
-                "timestamp-ms": 1794380902887,
-                "snapshot-id": 1070063223747273932
+                "timestamp-ms": 1794382566676,
+                "snapshot-id": 588605387768089118
             },
             {
-                "timestamp-ms": 1794380941327,
-                "snapshot-id": 5687804402348246837
+                "timestamp-ms": 1794382598460,
+                "snapshot-id": 8209533669307608351
             }
         ],
         "metadata-log": [
             {
-                "timestamp-ms": 1794380840667,
-                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00000-54c7a4d4-0c22-43e7-839c-477fec7da86c.metadata.json"
+                "timestamp-ms": 1794382467548,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00000-42bb649f-c866-4b7d-a5b5-4eef1955b651.metadata.json"
             },
             {
-                "timestamp-ms": 1794380863910,
-                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00001-fed6f4a5-8123-4258-b8b2-dfc095960ef5.metadata.json"
+                "timestamp-ms": 1794382491597,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00001-1a59e3f3-5329-4526-b8f5-17ca72f3be6d.metadata.json"
             },
             {
-                "timestamp-ms": 1794380887775,
-                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00002-416c908d-575f-4e8e-96c0-e01600f81415.metadata.json"
+                "timestamp-ms": 1794382514738,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00002-e55dbdd9-497b-42d3-8753-474e490ad867.metadata.json"
             },
             {
-                "timestamp-ms": 1794380902936,
-                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00003-99e8b645-0b13-4066-9916-1ca2f62840e4.metadata.json"
+                "timestamp-ms": 1794382566700,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00003-f6cee316-cbd0-49a6-99b3-95120ea60c0c.metadata.json"
             }
         ]
     },
@@ -217,7 +217,7 @@
         "s3.session-token": "<s3.session-token>",
         "client.refresh-credentials-endpoint": "v1/harbor/namespaces/harbor/tables/order_lines/credentials",
         "s3.endpoint": "http://127.0.0.1:9000",
-        "s3.session-token-expires-at-ms": "1794384447000",
+        "s3.session-token-expires-at-ms": "1794386073000",
         "client.region": "us-east-1"
     },
     "storage-credentials": [
@@ -227,7 +227,7 @@
                 "s3.access-key-id": "<s3.access-key-id>",
                 "s3.secret-access-key": "<s3.secret-access-key>",
                 "s3.session-token": "<s3.session-token>",
-                "s3.session-token-expires-at-ms": "1794384447000"
+                "s3.session-token-expires-at-ms": "1794386073000"
             }
         }
     ]

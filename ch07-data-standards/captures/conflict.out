@@ -1,4 +1,4 @@
-pyiceberg.table: Commit failed due to a concurrent update, retrying (1/4) in 102 ms
-both writers loaded snapshot 294802231122253903
-writer A committed snapshot 1070063223747273932
-writer B committed snapshot 5687804402348246837 with parent 1070063223747273932
+pyiceberg.table: Commit failed due to a concurrent update, retrying (1/4) in 106 ms
+both writers loaded snapshot 6438510680871847256
+writer A committed snapshot 588605387768089118
+writer B committed snapshot 8209533669307608351 with parent 588605387768089118

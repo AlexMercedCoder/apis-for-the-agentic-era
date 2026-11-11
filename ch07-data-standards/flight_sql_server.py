@@ -42,6 +42,9 @@ class HarborFlightSql(flight.FlightServerBase):
         snapshot = table.current_snapshot().snapshot_id
         con = duckdb.connect(config={"TimeZone": "UTC"})
         con.register("order_lines", table.scan().to_arrow())
+        # No file or network access from SQL, and no way to turn it back
+        # on: the only data a query can reach is the table above.
+        con.execute("SET enable_external_access = false")
         result = con.sql(query).to_arrow_table()
         print(f"query on snapshot {snapshot}: {result.num_rows} rows",
               file=sys.stderr, flush=True)

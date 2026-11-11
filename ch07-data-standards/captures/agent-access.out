@@ -1,4 +1,5 @@
 load table: ok, 6665 rows read
+load harbor.customers refused by the catalog: ForbiddenException
 commit refused by the catalog:
   ForbiddenException: Principal 'analytics-agent' with activated
   PrincipalRoles '[analytics_agent_role]' and activated grants via
@@ -6,3 +7,5 @@ commit refused by the catalog:
   for op ADD_TABLE_SCHEMA
 write with the vended credentials refused by the store:
   AWS Error ACCESS_DENIED during CreateMultipartUpload
+list harbor/customers with the vended credentials refused by the store:
+  AWS Error ACCESS_DENIED during ListObjectsV2

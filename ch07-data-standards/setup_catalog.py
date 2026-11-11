@@ -1,5 +1,7 @@
 """Create Harbor's warehouse bucket and Polaris catalog, plus a
-read-only principal for the analytics agent.
+read-only principal for the analytics agent. Run with
+`--grant harbor.order_lines` after the table exists to let that
+principal read that one table.
 
 Everything here goes through REST: the object store's S3 API (through
 PyArrow) and Polaris's management API. The credentials are placeholders
@@ -57,10 +59,11 @@ def main():
     call("PUT", "/catalogs/harbor/catalog-roles/catalog_admin/grants",
          tok, {"grant": {"type": "catalog",
                          "privilege": "CATALOG_MANAGE_CONTENT"}})
-    # A reader role that can see table data and nothing else.
+    # A reader role that can list what exists and nothing else yet;
+    # grant_table() adds read access to one table once it exists.
     call("POST", "/catalogs/harbor/catalog-roles", tok,
          {"catalogRole": {"name": "order_history_reader"}})
-    for priv in ("TABLE_READ_DATA", "NAMESPACE_LIST", "TABLE_LIST"):
+    for priv in ("NAMESPACE_LIST", "TABLE_LIST"):
         call("PUT", "/catalogs/harbor/catalog-roles/order_history_reader"
              "/grants", tok, {"grant": {"type": "catalog",
                                         "privilege": priv}})
@@ -78,8 +81,22 @@ def main():
     call("PUT", "/principals/analytics-agent/principal-roles", tok,
          {"principalRole": {"name": "analytics_agent_role"}})
     print("catalog harbor on s3://harbor-lake; principal analytics-agent "
-          "granted order_history_reader")
+          "holds order_history_reader")
+
+
+def grant_table(namespace, table):
+    """TABLE_READ_DATA on one table only, not on the whole catalog."""
+    call("PUT", "/catalogs/harbor/catalog-roles/order_history_reader/grants",
+         token(*ROOT), {"grant": {"type": "table", "namespace": [namespace],
+                                  "tableName": table,
+                                  "privilege": "TABLE_READ_DATA"}})
+    print(f"order_history_reader granted TABLE_READ_DATA on "
+          f"{namespace}.{table}")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if sys.argv[1:2] == ["--grant"]:
+        grant_table(*sys.argv[2].split("."))
+    else:
+        main()

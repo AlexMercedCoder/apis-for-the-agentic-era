@@ -1,5 +1,5 @@
 Harbor Flight SQL listening on grpc://127.0.0.1:8071
-query on snapshot 5687804402348246837: 2916 rows
-query on snapshot 5687804402348246837: 8 rows
-query on snapshot 5687804402348246837: 8 rows
-query on snapshot 5687804402348246837: 874 rows
+query on snapshot 8209533669307608351: 2916 rows
+query on snapshot 8209533669307608351: 8 rows
+query on snapshot 8209533669307608351: 8 rows
+query on snapshot 8209533669307608351: 874 rows
