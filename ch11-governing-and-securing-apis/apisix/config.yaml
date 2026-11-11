@@ -1,0 +1,19 @@
+# Apache APISIX 3.19.0 in standalone mode: no etcd and no Admin API. The
+# gateway reads its routes and consumers from apisix.yaml, which run.sh
+# renders from apisix.yaml.tmpl with the test issuer's public key.
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+apisix:
+  node_listen:
+    - ip: 127.0.0.1
+      port: 9080
+  enable_control: false
+nginx_config:
+  error_log_level: warn
+plugin_attr:
+  prometheus:
+    export_addr:
+      ip: 127.0.0.1
+      port: 9091

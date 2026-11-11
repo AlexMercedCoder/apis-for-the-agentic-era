@@ -1,0 +1,45 @@
+# Harbor's API style guide as Spectral rules, on top of the built-in
+# OpenAPI ruleset. Each rule is one line of the style guide.
+extends: ["spectral:oas"]
+rules:
+  info-contact: off
+  operation-tag-defined: off
+  harbor-no-version-in-path:
+    description: Paths carry no version; break only under a new prefix.
+    severity: error
+    given: $.paths
+    then:
+      field: "@key"
+      function: pattern
+      functionOptions:
+        notMatch: "^/v[0-9]+/"
+  harbor-errors-are-problem-details:
+    description: Every 4xx and 5xx response is RFC 9457 problem details.
+    severity: error
+    given: $.paths[*][*].responses[?(@property >= '400')].content
+    then:
+      field: application/problem+json
+      function: truthy
+  harbor-writes-take-idempotency-key:
+    description: Every POST takes an Idempotency-Key header.
+    severity: error
+    given: $.paths[*].post
+    then:
+      field: parameters
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          contains:
+            type: object
+            properties:
+              name: {const: Idempotency-Key}
+              in: {const: header}
+            required: [name, in]
+  harbor-operation-description:
+    description: Every operation has a description an agent can read.
+    severity: warn
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: description
+      function: truthy

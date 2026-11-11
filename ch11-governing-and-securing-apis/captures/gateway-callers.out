@@ -1,0 +1,10 @@
+no token: 401
+agent token on the REST route: {"message":"The consumer_name is forbidden."}
+ 403
+storefront token:
+HTTP/1.1 200 OK
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 119
+X-RateLimit-Reset: 60
+Server: APISIX/3.19.0
+X-Request-Id: fd4ac030-bb0d-47f0-9373-2d987f540016

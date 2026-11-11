@@ -1,0 +1,5 @@
+ch06-streaming-and-event-apis/asyncapi.yaml:1:1 warning asyncapi-servers "AsyncAPI object must have non-empty "servers" object."
+ch06-streaming-and-event-apis/asyncapi.yaml:2:6 warning asyncapi-3-tags "AsyncAPI document must have non-empty "tags" array."
+ch06-streaming-and-event-apis/asyncapi.yaml:2:6 warning asyncapi-info-contact "Info object must have "contact" object."
+ch06-streaming-and-event-apis/asyncapi.yaml:2:6 warning asyncapi-info-license "Info object must have "license" object."
+ch06-streaming-and-event-apis/asyncapi.yaml:17:20 warning asyncapi-3-operation-description "Operation "description" must be present and non-empty string." (exit 0)

@@ -2,7 +2,8 @@
 # Runs every example in this repository that needs no network access
 # beyond 127.0.0.1 and no API keys, and checks the output the book prints.
 # Usage: ./verify.sh    (needs bash, curl, uv; Chapters 4 and 6 also need
-# Node 24, Chapter 4 needs grpcurl 1.9.4, and Chapters 7 and 8 need Docker)
+# Node 24, Chapter 4 needs grpcurl 1.9.4, and Chapters 7, 8, 10, and 11
+# need Docker)
 set -uo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
@@ -632,6 +633,52 @@ check "ch10: printed listings fit 72 columns; no access token captured" \
   bash -c "[ -s '$CH10/listings.txt' ] &&
            [ -z \"\$(awk 'length > 72' '$CH10/listings.txt')\" ] &&
            ! grep -rq 'eyJhbGci' '$CH10'"
+
+# Chapter 11: Harbor behind Apache APISIX; lint, breaking changes, and a
+# planted injection. Needs Docker (apache/apisix:3.19.0-debian,
+# tufin/oasdiff:v1.37.0) and Node 24 (Spectral 6.17.1).
+CH11="$TMP/ch11"
+check "ch11: run.sh completes" env OUT="$CH11" ch11-governing-and-securing-apis/run.sh
+check "ch11: lint passes the pinned contract, fails the proposed one" \
+  bash -c "grep -q 'No results with a severity of .error.' '$CH11/lint-pinned.out' &&
+           grep -q 'error harbor-writes-take-idempotency-key' '$CH11/lint-proposed.out' &&
+           grep -q 'error harbor-errors-are-problem-details' '$CH11/lint-proposed.out' &&
+           grep -q '(exit 1)' '$CH11/lint-proposed.out'"
+check "ch11: oasdiff reports the price_cents rename as breaking" \
+  bash -c "grep -q '2 changes: 2 error' '$CH11/breaking.out' &&
+           grep -q 'removed the required property .price_cents.' '$CH11/breaking.out' &&
+           grep -q 'exit 1' '$CH11/breaking.out'"
+check "ch11: gateway policies per caller; deprecation headers" \
+  bash -c "grep -q 'no token: 401' '$CH11/gateway-callers.out' &&
+           grep -q 'consumer_name is forbidden' '$CH11/gateway-callers.out' &&
+           grep -q 'X-RateLimit-Limit: 120' '$CH11/gateway-callers.out' &&
+           grep -q 'Deprecation: @1793491200' '$CH11/deprecated.out' &&
+           grep -q 'Sunset: Sat, 01 May 2027' '$CH11/deprecated.out'"
+check "ch11: BOLA open on Chapter 3's API, closed behind the gate" \
+  bash -c "grep -q '\"customer_id\": \"cus-002\"' '$CH11/bola.out' &&
+           grep -q 'no such order\"} 404' '$CH11/bola.out'"
+check "ch11: the agent's eleventh request in a minute gets 429" \
+  bash -c "grep -q 'requests 1 to 10: \(200 \)\{10\}' '$CH11/rate-limit.out' &&
+           grep -q 'HTTP/1.1 429' '$CH11/rate-limit.out' &&
+           grep -q 'X-RateLimit-Remaining: 0' '$CH11/rate-limit.out'"
+check "ch11: planted review flagged; write held, refused twice" \
+  bash -c "grep -q 'rev-004 flagged' '$CH11/agent-host.out' &&
+           grep -q 'held for Rosa' '$CH11/agent-host.out' &&
+           grep -q 'agent clients may not call write tools' '$CH11/agent-host.out' &&
+           grep -q 'direct to the server: 403' '$CH11/agent-host.out' &&
+           grep -q 'cancel_order caller=cus-001 403 needs orders:write' '$CH11/mcp-server.log'"
+check "ch11: audit, trace, and gateway log share one trace ID" \
+  bash -c "t=\$(head -1 '$CH11/audit.jsonl' | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"trace_id\"])') &&
+           [ \"\$(grep -c \"\$t\" '$CH11/audit.jsonl')\" = 6 ] &&
+           grep -q \"00-\$t-\" '$CH11/gateway-access.jsonl' &&
+           grep -q '\"gen_ai.tool.name\": \"list_reviews\"' '$CH11/trace.jsonl'"
+check "ch11: Chapter 3's logger forges a line; the JSON logs don't" \
+  bash -c "grep -qx '\"DELETE /orders/ord-5001 HTTP/1.1\" 204' '$CH11/backend.log' &&
+           grep -q 'bk-1001%0A%22DELETE' '$CH11/backend.log' &&
+           ! grep -qx '\"DELETE /orders/ord-5001 HTTP/1.1\" 204' '$CH11/gateway-access.jsonl'"
+check "ch11: inventory finds the shadow routes and the deprecated path" \
+  bash -c "grep -q '^  /docs, ' '$CH11/inventory.out' &&
+           grep -q 'deprecated: /v0/books/\*' '$CH11/inventory.out'"
 
 echo
 echo "$PASS passed, $FAIL failed"

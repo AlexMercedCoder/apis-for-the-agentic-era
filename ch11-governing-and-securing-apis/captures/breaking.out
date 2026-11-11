@@ -1,0 +1,11 @@
+2 changes: 2 error, 0 warning, 0 info
+error	[response-required-property-removed] at /specs/proposed-openapi.json
+	in API GET /books
+		removed the required property `items/items/price_cents` from the response with the `200` status
+
+error	[response-required-property-removed] at /specs/proposed-openapi.json
+	in API GET /books/{book_id}
+		removed the required property `price_cents` from the response with the `200` status
+
+
+exit 1

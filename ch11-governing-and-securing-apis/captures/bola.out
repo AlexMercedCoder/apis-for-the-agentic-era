@@ -1,0 +1,19 @@
+Chapter 3's API, called directly:
+{
+  "id": "ord-5002",
+  "customer_id": "cus-002",
+  "status": "shipped",
+  "placed_at": "2026-11-03T09:41:52Z",
+  "lines": [
+    {"book_id": "bk-1003", "quantity": 1, "unit_price_cents"
+    {"book_id": "bk-1005", "quantity": 2, "unit_price_cents"
+  ],
+  "total_cents": 4897,
+  "currency": "USD",
+  "links": {
+    "self": {"href": "/orders/ord-5002", "method": "GET"}
+  }
+}
+ 200
+Rosa's storefront token, through the gateway:
+{"type": "about:blank", "status": 404, "title": "no such order"} 404

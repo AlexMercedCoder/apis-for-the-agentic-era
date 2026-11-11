@@ -6,7 +6,7 @@ Every request, response, and error printed in the book comes from running the co
 
 ## Status
 
-The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/`, `ch01-what-is-an-api/`, `ch02-soap-apis/`, `ch03-rest-apis/`, `ch04-rpc-apis/`, `ch05-graphql-apis/`, `ch06-streaming-and-event-apis/`, `ch07-data-standards/`, `ch08-identity-standards/`, `ch09-payment-standards/`, and `ch10-agent-protocols/`.
+The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/`, `ch01-what-is-an-api/`, `ch02-soap-apis/`, `ch03-rest-apis/`, `ch04-rpc-apis/`, `ch05-graphql-apis/`, `ch06-streaming-and-event-apis/`, `ch07-data-standards/`, `ch08-identity-standards/`, `ch09-payment-standards/`, `ch10-agent-protocols/`, and `ch11-governing-and-securing-apis/`.
 
 To check everything that runs offline:
 
@@ -14,7 +14,7 @@ To check everything that runs offline:
 ./verify.sh
 ```
 
-It needs bash, `curl`, and [uv](https://docs.astral.sh/uv/); Chapters 4 and 6 also need Node 24, Chapter 4 needs [grpcurl](https://github.com/fullstorydev/grpcurl) 1.9.4, and Chapters 7, 8, and 10 need Docker with Compose (they pull `apache/polaris:1.8.0`, `rustfs/rustfs:1.0.5`, and `quay.io/keycloak/keycloak:26.8.2` on first run). Apart from that pull, it touches nothing beyond `127.0.0.1`.
+It needs bash, `curl`, and [uv](https://docs.astral.sh/uv/); Chapters 4, 6, and 11 also need Node 24, Chapter 4 needs [grpcurl](https://github.com/fullstorydev/grpcurl) 1.9.4, and Chapters 7, 8, 10, and 11 need Docker with Compose (they pull `apache/polaris:1.8.0`, `rustfs/rustfs:1.0.5`, `quay.io/keycloak/keycloak:26.8.2`, `apache/apisix:3.19.0-debian`, and `tufin/oasdiff:v1.37.0` on first run). Apart from that pull, it touches nothing beyond `127.0.0.1`.
 
 ## Layout
 

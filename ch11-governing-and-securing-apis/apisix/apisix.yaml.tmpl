@@ -1,0 +1,78 @@
+# Harbor's gateway: one consumer per caller type, known by the token's
+# azp claim, each with its own rate limit; routes for the REST API, the
+# MCP server, and one deprecated path. Rendered by render.py.
+consumers:
+  - username: storefront
+    plugins:
+      jwt-auth: {key: harbor-storefront, algorithm: RS256,
+                 public_key: "{PEM}"}
+      limit-count: {count: 120, time_window: 60, rejected_code: 429,
+                    key_type: var, key: consumer_name}
+  - username: partner
+    plugins:
+      jwt-auth: {key: harbor-partner, algorithm: RS256,
+                 public_key: "{PEM}"}
+      limit-count: {count: 600, time_window: 60, rejected_code: 429,
+                    key_type: var, key: consumer_name}
+  - username: assistant
+    plugins:
+      jwt-auth: {key: harbor-assistant, algorithm: RS256,
+                 public_key: "{PEM}"}
+      limit-count: {count: 10, time_window: 60, rejected_code: 429,
+                    rejected_msg: "rate limit exceeded",
+                    key_type: var, key: consumer_name}
+routes:
+  - id: harbor-rest
+    uris: [/books, /books/*, /orders, /orders/*]
+    plugins:
+      jwt-auth: {key_claim_name: azp}
+      consumer-restriction: {whitelist: [storefront, partner]}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8111": 1}}
+  - id: harbor-rest-v0
+    uri: /v0/books/*
+    plugins:
+      jwt-auth: {key_claim_name: azp}
+      proxy-rewrite: {regex_uri: ["^/v0/books/(.*)", "/books/$1"]}
+      response-rewrite:
+        headers:
+          set:
+            Deprecation: "@1793491200"
+            Sunset: "Sat, 01 May 2027 00:00:00 GMT"
+            Link: '<https://harbor.example/v0-end>; rel="deprecation"'
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8111": 1}}
+  - id: mcp-write-tools
+    uri: /mcp
+    priority: 10
+    vars: [["http_mcp_method", "==", "tools/call"],
+           ["http_mcp_name", "in", ["place_order", "cancel_order"]]]
+    plugins:
+      jwt-auth: {key_claim_name: azp}
+      consumer-restriction:
+        blacklist: [assistant]
+        rejected_msg: "agent clients may not call write tools"
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8010": 1}}
+  - id: mcp
+    uri: /mcp
+    plugins:
+      jwt-auth: {key_claim_name: azp}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8010": 1}}
+  - id: mcp-metadata
+    uri: /.well-known/oauth-protected-resource/mcp
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8010": 1}}
+global_rules:
+  - id: audit
+    plugins:
+      request-id: {header_name: X-Request-Id}
+      file-logger:
+        path: /usr/local/apisix/logs/access.jsonl
+        log_format:
+          time: "$time_iso8601"
+          request_id: "$http_x_request_id"
+          traceparent: "$http_traceparent"
+          consumer: "$consumer_name"
+          method: "$request_method"
+          uri: "$request_uri"
+          mcp_method: "$http_mcp_method"
+          mcp_name: "$http_mcp_name"
+          status: "$status"
+#END

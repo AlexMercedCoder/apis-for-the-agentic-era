@@ -1,0 +1,2 @@
+proposed-openapi.json:215:22 error harbor-writes-take-idempotency-key "Every POST takes an Idempotency-Key header."
+proposed-openapi.json:251:23 error harbor-errors-are-problem-details "Every 4xx and 5xx response is RFC 9457 problem details." (exit 1)

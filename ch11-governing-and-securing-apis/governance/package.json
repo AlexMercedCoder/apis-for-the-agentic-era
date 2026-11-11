@@ -1,0 +1,8 @@
+{
+  "name": "harbor-ch11-governance",
+  "private": true,
+  "description": "Chapter 11: lint Harbor's contracts with Spectral",
+  "devDependencies": {
+    "@stoplight/spectral-cli": "6.17.1"
+  }
+}

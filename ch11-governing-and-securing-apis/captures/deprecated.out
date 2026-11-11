@@ -1,0 +1,4 @@
+HTTP/1.1 200 OK
+Deprecation: @1793491200
+Link: <https://harbor.example/v0-end>; rel="deprecation"
+Sunset: Sat, 01 May 2027 00:00:00 GMT
