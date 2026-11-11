@@ -41,7 +41,7 @@ curl -v http://127.0.0.1:8000/books/bk-1001
 curl -s http://127.0.0.1:8000/books/bk-9999    # 404 with a hint
 uv run python client.py bk-1001
 uv run python agent.py
-grep 'bk-1001' captures/server.log             # after ./run.sh
+grep 'bk-1001' captures/server-log.txt             # after ./run.sh
 ```
 
 Expected output of `client.py`:
@@ -82,7 +82,7 @@ format follows https://platform.claude.com/docs/en/agents-and-tools/tool-use/ove
 | `curl-get-missing-book.out` | `curl -s -w '%{http_code}\n' .../books/bk-9999` |
 | `client.out` | `uv run python client.py bk-1001` |
 | `agent.out` | `uv run python agent.py` |
-| `server.log` | the server's request log for the run |
+| `server-log.txt` | the server's request log for the run |
 
 Recorded November 10, 2026. `../verify.sh` reruns everything into a
 temporary folder and checks the lines the chapter prints.

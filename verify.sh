@@ -56,7 +56,7 @@ check "ch01: stand-in emits a get_book tool_use block" \
            grep -q '\"name\": \"get_book\"' '$CH01/agent.out' &&
            grep -q '\"is_error\": false' '$CH01/agent.out'"
 check "ch01: all three callers sent the same request line" \
-  bash -c "[ \$(grep -c '\"GET /books/bk-1001 HTTP/1.1\" 200' '$CH01/server.log') -eq 3 ]"
+  bash -c "[ \$(grep -c '\"GET /books/bk-1001 HTTP/1.1\" 200' '$CH01/server-log.txt') -eq 3 ]"
 
 echo
 echo "$PASS passed, $FAIL failed"

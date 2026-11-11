@@ -9,7 +9,7 @@ OUT="${OUT:-captures}"
 mkdir -p "$OUT"
 
 uv sync -q
-uv run python harbor_rest.py --port "$PORT" 2> "$OUT/server.log" &
+uv run python harbor_rest.py --port "$PORT" 2> "$OUT/server-log.txt" &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 

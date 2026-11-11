@@ -1,0 +1,5 @@
+Harbor REST on http://127.0.0.1:8000
+"GET /books/bk-1001 HTTP/1.1" 200 ua="curl/7.81.0"
+"GET /books/bk-9999 HTTP/1.1" 404 ua="curl/7.81.0"
+"GET /books/bk-1001 HTTP/1.1" 200 ua="python-httpx/0.28.1"
+"GET /books/bk-1001 HTTP/1.1" 200 ua="harbor-agent/0.1"
