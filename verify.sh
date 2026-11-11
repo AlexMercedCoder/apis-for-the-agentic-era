@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs every example in this repository that needs no network access
 # beyond 127.0.0.1 and no API keys, and checks the output the book prints.
-# Usage: ./verify.sh    (needs bash, curl, uv; Chapter 4 also needs
-# Node 24 and grpcurl 1.9.4)
+# Usage: ./verify.sh    (needs bash, curl, uv; Chapters 4 and 6 also need
+# Node 24, and Chapter 4 needs grpcurl 1.9.4)
 set -uo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
@@ -335,6 +335,43 @@ check "ch05: run_graphql's host check refuses a mutation, and tool sizes match" 
            grep -qx 'sent: queries only' '$CH05/check-query.out' &&
            grep -q 'schema.graphql (SDL)         1,699 bytes' '$CH05/tool-sizes.out' &&
            grep -q 'three curated tools (JSON)   1,063 bytes' '$CH05/tool-sizes.out'"
+
+# --- Chapter 6 ---------------------------------------------------------
+CH06="$TMP/ch06"
+check "ch06: run.sh completes" env OUT="$CH06" ch06-streaming-and-event-apis/run.sh
+check "ch06: webhook retried after 503, replay deduplicated, forgery and stale rejected" \
+  bash -c "grep -Eq '^503 msg_[0-9a-f]{24} \(receiver busy, stand-in\)$' '$CH06/receiver.log' &&
+           grep -Eq '^204 msg_[0-9a-f]{24} processed order.shipped ord-5003$' '$CH06/receiver.log' &&
+           grep -Eq '^204 msg_[0-9a-f]{24} duplicate, already processed$' '$CH06/receiver.log' &&
+           grep -qx '401 rejected: no signature matches' '$CH06/receiver.log' &&
+           grep -qx '401 rejected: timestamp over 300 seconds from now' '$CH06/receiver.log' &&
+           [ \"\$(grep -c 'msg_' '$CH06/receiver.log')\" -eq 3 ] &&
+           [ \"\$(awk '{print \$2}' '$CH06/receiver.log' | grep msg_ | sort -u | wc -l)\" -eq 1 ] &&
+           grep -qx 'attempt 2 after 1s: 204' '$CH06/sender.out'"
+check "ch06: signature matches Standard Webhooks' construction" \
+  bash -c "cd ch06-streaming-and-event-apis && uv run -q python -c \"
+import base64, hashlib, hmac, webhooks
+mac = hmac.new(b'k' * 24, b'msg_1.1700000000.{}', hashlib.sha256).digest()
+s = 'whsec_' + base64.b64encode(b'k' * 24).decode()
+assert webhooks.sign(s, 'msg_1', '1700000000', b'{}') == 'v1,' + base64.b64encode(mac).decode()
+h = {'webhook-id': 'msg_1', 'webhook-timestamp': '1700000000',
+     'webhook-signature': 'v1,bad v1,' + base64.b64encode(mac).decode()}
+assert webhooks.verify(s, h, b'{}', now=1700000100) == 'msg_1'
+\""
+check "ch06: AsyncAPI document valid, delivery matches it" \
+  bash -c "grep -qx '../asyncapi.yaml: valid AsyncAPI 3.1.0, operations: sendOrderShipped (send on order.shipped)' '$CH06/asyncapi-validate.out' &&
+           grep -q 'matches order.shipped in AsyncAPI 3.1.0' '$CH06/contract.out'"
+check "ch06: SSE resumes after Last-Event-ID 2 with event 3 only" \
+  bash -c "grep -qx 'content-type: text/event-stream; charset=utf-8' '$CH06/sse-first.out' &&
+           grep -qx 'id: 2' '$CH06/sse-first.out' && ! grep -qx 'id: 3' '$CH06/sse-first.out' &&
+           grep -qx 'id: 3' '$CH06/sse-resume.out' && ! grep -qx 'id: 2' '$CH06/sse-resume.out' &&
+           grep -qx 'event: order.shipped' '$CH06/sse-resume.out'"
+check "ch06: WebSocket upgrade, masked client frames, close 1000" \
+  bash -c "grep -qx 'HTTP/1.1 101 Switching Protocols' '$CH06/websocket.out' &&
+           grep -qx 'Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=' '$CH06/websocket.out' &&
+           grep -qx 'client -> server  FIN=1 opcode=0x1 (text) MASK=1 len=38' '$CH06/websocket.out' &&
+           grep -q 'server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=98' '$CH06/websocket.out' &&
+           [ \"\$(grep -c 'close code 1000' '$CH06/websocket.out')\" -eq 2 ]"
 
 echo
 echo "$PASS passed, $FAIL failed"

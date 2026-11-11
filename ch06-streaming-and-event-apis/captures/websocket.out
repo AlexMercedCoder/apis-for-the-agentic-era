@@ -1,0 +1,29 @@
+GET /ws HTTP/1.1
+Host: 127.0.0.1:8006
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+Sec-WebSocket-Version: 13
+
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+server: uvicorn
+
+
+expected Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+
+client -> server  FIN=1 opcode=0x1 (text) MASK=1 len=38
+    {"type":"watch","order_id":"ord-5003"}
+server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=61
+    {"id":1,"type":"order.placed","data":{"order_id":"ord-5003"}}
+server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=59
+    {"id":2,"type":"order.paid","data":{"order_id":"ord-5003"}}
+server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=98
+    {"id":3,"type":"order.shipped","data":{"order_id":"ord-5003",
+    "shipped_at":"2026-11-11T06:09:32Z"}}
+client -> server  FIN=1 opcode=0x8 (close) MASK=1 len=2
+    close code 1000
+server -> client  FIN=1 opcode=0x8 (close) MASK=0 len=2
+    close code 1000

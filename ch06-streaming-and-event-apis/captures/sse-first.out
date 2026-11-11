@@ -1,0 +1,14 @@
+HTTP/1.1 200 OK
+content-type: text/event-stream; charset=utf-8
+cache-control: no-cache
+
+retry: 3000
+
+id: 1
+event: order.placed
+data: {"order_id":"ord-5003"}
+
+id: 2
+event: order.paid
+data: {"order_id":"ord-5003"}
+

@@ -6,7 +6,7 @@ Every request, response, and error printed in the book comes from running the co
 
 ## Status
 
-The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/`, `ch01-what-is-an-api/`, `ch02-soap-apis/`, `ch03-rest-apis/`, `ch04-rpc-apis/`, and `ch05-graphql-apis/`.
+The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/`, `ch01-what-is-an-api/`, `ch02-soap-apis/`, `ch03-rest-apis/`, `ch04-rpc-apis/`, `ch05-graphql-apis/`, and `ch06-streaming-and-event-apis/`.
 
 To check everything that runs offline:
 
@@ -14,7 +14,7 @@ To check everything that runs offline:
 ./verify.sh
 ```
 
-It needs bash, `curl`, and [uv](https://docs.astral.sh/uv/); Chapter 4 also needs Node 24 and [grpcurl](https://github.com/fullstorydev/grpcurl) 1.9.4. It touches nothing beyond `127.0.0.1`.
+It needs bash, `curl`, and [uv](https://docs.astral.sh/uv/); Chapters 4 and 6 also need Node 24, and Chapter 4 needs [grpcurl](https://github.com/fullstorydev/grpcurl) 1.9.4. It touches nothing beyond `127.0.0.1`.
 
 ## Layout
 

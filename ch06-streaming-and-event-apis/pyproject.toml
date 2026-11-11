@@ -1,0 +1,16 @@
+[project]
+name = "harbor-ch06"
+version = "0.1.0"
+description = "Chapter 6: Harbor Books order.shipped as a signed webhook, an SSE stream, and WebSocket messages, described in AsyncAPI"
+requires-python = ">=3.13"
+dependencies = [
+    "starlette==1.10.0",
+    "uvicorn==0.54.0",
+    "websockets==17.4",
+    "httpx==0.28.1",
+    "pyyaml==6.0.3",
+    "jsonschema==4.26.0",
+]
+
+[tool.uv]
+package = false

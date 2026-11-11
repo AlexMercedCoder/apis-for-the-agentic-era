@@ -1,0 +1,8 @@
+{
+  "name": "harbor-ch06-asyncapi-validate",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@asyncapi/parser": "3.6.6"
+  }
+}

@@ -1,0 +1,57 @@
+asyncapi: 3.1.0
+info:
+  title: Harbor Books order events
+  version: 1.0.0
+  description: >-
+    Events Harbor sends when an order changes. Webhook subscribers
+    receive them as signed POSTs (Standard Webhooks 1.0.0); the same
+    data is streamed over SSE and WebSocket by harbor_stream.py.
+defaultContentType: application/json
+channels:
+  orderShipped:
+    address: order.shipped
+    messages:
+      orderShipped:
+        $ref: '#/components/messages/orderShipped'
+operations:
+  sendOrderShipped:
+    action: send
+    channel:
+      $ref: '#/channels/orderShipped'
+    summary: Tell a subscriber that an order left the warehouse.
+components:
+  messages:
+    orderShipped:
+      name: order.shipped
+      headers:
+        type: object
+        required: [webhook-id, webhook-timestamp, webhook-signature]
+        properties:
+          webhook-id:
+            type: string
+            description: Same on every retry; use it to drop duplicates.
+          webhook-timestamp:
+            type: string
+            pattern: '^[0-9]+$'
+          webhook-signature:
+            type: string
+            pattern: '^v1,'
+      payload:
+        type: object
+        required: [type, timestamp, data]
+        properties:
+          type:
+            const: order.shipped
+          timestamp:
+            type: string
+            format: date-time
+          data:
+            type: object
+            required: [order_id, shipped_at]
+            properties:
+              order_id:
+                type: string
+                pattern: '^ord-[0-9]{4}$'
+              shipped_at:
+                type: string
+                format: date-time
