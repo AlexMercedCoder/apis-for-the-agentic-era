@@ -21,11 +21,11 @@ It starts, all on `127.0.0.1`:
 
 | Port | What |
 |---|---|
-| 8120 | `issuer.py`: test issuer (token exchange per RFC 8693 with nested `act`; CIBA poll mode with `authorization_details` type `harbor_refund`; `/phone/*` for the stand-in phone) |
+| 8120 | `issuer.py`: test issuer (token exchange per RFC 8693 with nested `act`; CIBA poll mode, `openid` required, with `authorization_details` type `harbor_refund`, rendered by the issuer for the phone; `/phone/*` for the stand-in phone, behind a device secret `run.sh` gives only to the issuer and `phone.py`) |
 | 8005 | Chapter 5's GraphQL server, `--trusted-only` |
 | 8091 | `payment_provider.py`: Chapter 9's provider stand-in, webhooks to 8123 |
-| 8123 | `refunds_api.py`: `POST /orders/{order_id}/refunds` (needs `orders:refund`, matching `authorization_details`, a damage case, and an `Idempotency-Key`; problem details with `hint`); `--slow-first` holds the first created refund's answer 1.5 s |
-| 8124 | `fulfillment_agent.py`: A2A 1.0, skill `report-damage`; requires a token for its own audience, checks the order's owner, answers `GetTask` only for the task's creator |
+| 8123 | `refunds_api.py`: `POST /orders/{order_id}/refunds` (needs `orders:refund`, the support MCP server as current actor, matching `authorization_details`, an `Idempotency-Key` equal to the approval's `request_id`, and a damage case; one refund per order line; state in `state/refunds.json`; provider key per order line; a provider failure frees the line; problem details with `hint`); `--slow-first` holds the first created refund's answer 1.5 s |
+| 8124 | `fulfillment_agent.py`: A2A 1.0, skill `report-damage` (random case IDs; the description stored as untrusted text); requires a token for its own audience, checks the order's owner, answers `GetTask` only for the task's creator |
 | 8122 | `support_mcp.py`: MCP `2026-07-28` server with `order_overview` and `refund_damaged_copy` |
 | 8125 | the host's receiver for the signed `refund.succeeded` webhook (while `host.py` runs) |
 | 9080 | Apache APISIX 3.19.0 (`apisix/apisix.yaml.tmpl`, rendered by `render.py`) |
@@ -34,11 +34,12 @@ It takes about three minutes, mostly waiting out the gateway's per-person limit.
 
 ## What each capture shows
 
-- `tools.json`, `tools.out`: the three tools the model sees (1,912 bytes in the Messages API format) against Chapter 10's seven generated tools (3,301 bytes).
+- `tools.json`, `tools.out`: the three tools the model sees (1,906 bytes in the Messages API format) against Chapter 10's seven generated tools (3,301 bytes).
 - `capstone.out`: Rosa's session, from the question to the answer.
 - `support-mcp.log`, `refunds-api.log`: the refund's first attempt times out after 1.0 s, the retry 0.5 s later with the same key gets `201` replayed; the refunds API logs the actor chain `rosa->harbor-assistant->harbor-support-mcp`.
-- `phone.log`: the binding message and `authorization_details` Rosa's phone showed.
-- `provider.log`, `fulfillment.log`: one refund at the provider; the damage case `dmg-5001-1001`.
+- `phone.log`: what Rosa's phone showed: the issuer's rendering of the `authorization_details`, the host's short binding code, and the details.
+- `forge-approval.out`: the host's own attempts to read Rosa's phone queue and approve its request get 401 `invalid_device`, no token is issued, and a CIBA request without `openid` gets 400.
+- `provider.log`, `fulfillment.log`: one refund at the provider; a random damage case ID.
 - `trace.out`, `trace.json`, `trace-*.jsonl`, `gateway-access.jsonl`, `audit.jsonl`: spans from the host, MCP server, fulfillment agent, and refunds API joined by trace ID (GenAI, MCP, and A2A semantic conventions), the gateway lines with the same trace ID (a 499 for the abandoned attempt), and one audit record per decision.
 - `rate-limit.out`: Sam's assistant makes eleven reads; the eleventh gets 429 and `reliable.call()` waits out `X-RateLimit-Reset`.
 - `eval-<scenario>.out`, `eval-<scenario>.json`, `eval.out`: five scenarios, each on a fresh stack (happy, guess-case, repeat, declined, not-theirs), graded by `eval_suite.py`: 7 passed, 0 failed.
@@ -47,14 +48,14 @@ It takes about three minutes, mostly waiting out the gateway's per-person limit.
 ## Offline checks
 
 ```bash
-uv run python test_offline.py   # retries, breaker, exchange rules, refusals
+uv run python test_offline.py   # retries, breaker, phone, exchange, refunds
 uv run python replay_test.py captures/fixtures-capstone.json
 ```
 
 ## Not production-ready
 
-- The model is a stand-in, and so is Rosa's phone; a real host never answers an approval for the person.
-- The issuer has no sign-in and keeps its key on disk; it copies `authorization_details` into exchanged tokens, a choice RFC 8693 and RFC 9396 leave open.
+- The model is a stand-in (fixed rules that read results and hints), and so is Rosa's phone; its device secret stands in for a real device that signs her in.
+- The issuer has no sign-in, keeps its key on disk, and omits the ID Token from CIBA token responses; it copies `authorization_details` into exchanged tokens, a choice RFC 8693 and RFC 9396 leave open.
+- Refund state is a JSON file, written after each change; production keeps it in the same database transaction as the refund.
 - The provider's and the host's webhooks go direct, not through the gateway, and the MCP server reads the GraphQL server on loopback without a token.
-- Refunds, damage cases, and idempotency keys live in memory or a local file.
 - The egress proxy and the Flight SQL token check from Chapter 11 are still not built.

@@ -166,15 +166,21 @@ class Host:
         held = self.approvals.get((args["order_id"], args["book_id"]))
         if held:
             return held
-        overview = last(context, "order_overview")
-        line = next(ln for ln in overview["lines"]
-                    if ln["book_id"] == args["book_id"])
+        overview = next((i["structured"] for i in reversed(context)
+                         if i.get("source") == "order_overview"
+                         and not i["isError"] and i["structured"]
+                         ["order_id"] == args["order_id"]), None)
+        line = overview and next((ln for ln in overview["lines"]
+                                  if ln["book_id"] == args["book_id"]),
+                                 None)
+        if line is None:
+            self.line("host: no lookup of that order line; not asking")
+            return None
         detail = {"type": "harbor_refund", "actions": ["refund"],
                   "order_id": args["order_id"], "book_id": args["book_id"],
                   "max_amount": line["price_cents"], "currency": "USD",
                   "request_id": str(uuid.uuid4())}
-        message = (f"Refund {line['price_cents'] / 100:.2f} USD for "
-                   f"{line['title']} on {args['order_id']}?")
+        message = f"Harbor {detail['request_id'][:4].upper()}"
         with tracer.start_as_current_span("approval harbor_refund") as span:
             resp = await self.http.post(f"{issuer.ISSUER}/bc-authorize",
                                         data={
@@ -183,8 +189,8 @@ class Host:
                 "binding_message": message,
                 "authorization_details": json.dumps([detail])})
             req = resp.json()
-            self.line(f"host: held for {self.person}'s approval; "
-                      f"CIBA request sent to her phone: \"{message}\"")
+            self.line(f"host: held for {self.person}'s approval; CIBA "
+                      f"request sent to her phone, code {message}")
             while True:
                 await asyncio.sleep(req["interval"])
                 tok = await self.http.post(f"{issuer.ISSUER}/token", data={
@@ -203,6 +209,7 @@ class Host:
                    decision=decision, max_amount=detail["max_amount"])
         if tok.status_code != 200:
             self.line(f"{self.person}'s phone: {decision}")
+            self.declined = True
             return None
         self.line(f"{self.person}'s phone: approved; token scope "
                   f"\"{answer['scope']}\", authorization_details "
@@ -217,10 +224,13 @@ class Host:
         call_id = f"call-{uuid.uuid4().hex[:8]}"
         token = None
         if name in WRITES and must_hold(name, context):
+            self.declined = False
             token = await self.approval(args, context)
             if token is None:
-                result = {"isError": True, "text": "The customer declined "
-                          "on her phone; nothing was refunded."}
+                text = ("The customer declined on her phone; nothing was "
+                        "refunded." if self.declined else "Look up the "
+                        "order first; nothing was refunded.")
+                result = {"isError": True, "text": text}
                 return self.record(name, args, result, context)
         if name == "report_damage":
             result = await self.report_damage(args)
@@ -265,6 +275,7 @@ class Host:
             self.say(f"session {self.session}: {self.person} via "
                      f"harbor-assistant, {len(tools)} tools")
             context = [{"role": "user", "text": question}]
+            self.context = context
             self.line(f"{self.person}: \"{question}\"")
             for _ in range(8):
                 step = stand_in(context, self.scenario)
@@ -290,6 +301,9 @@ class Host:
                 await asyncio.wait_for(event.wait(), 10)
                 self.line(f"webhook refund.succeeded {refund_id}: "
                           f"agent woken")
+                self.context.append({"role": "event",
+                                     "source": "refund.succeeded",
+                                     "refund_id": refund_id})
             except TimeoutError:
                 self.line(f"no webhook for {refund_id} yet")
 
@@ -314,7 +328,12 @@ def last(context, tool, ok=True):
 
 
 def stand_in(context, scenario="happy"):
-    """Pick the next call the way a model would. Not a model."""
+    """Pick the next call by fixed rules, as a model would. Not a model.
+
+    It reads the question, the tool results, and each error's hint, and
+    it repeats nothing it wasn't told about; `scenario` scripts the one
+    mistake each evaluation scenario needs.
+    """
     question = context[0]["text"]
     order_id = re.search(r"ord-[0-9]{4}", question).group(0)
     seen = [(n, i) for n, i in enumerate(context) if i.get("source")]
@@ -325,21 +344,25 @@ def stand_in(context, scenario="happy"):
         return {"answer": f"I can't find {order_id} on your account."}
     line = next(ln for ln in overview["lines"]
                 if ln["title"].lower() in question.lower())
+    said = next(s.strip() for s in re.split(r"(?<=[.?!])\s+", question)
+                if line["title"].lower() in s.lower())
     refund = {"order_id": order_id, "book_id": line["book_id"]}
     refunds = [(n, i) for n, i in seen
                if i["source"] == "refund_damaged_copy"]
     cases = [(n, i) for n, i in seen
              if i["source"] == "report_damage" and not i["isError"]]
     if scenario == "guess-case" and not refunds:
-        guess = f"dmg-{order_id[-4:]}-{line['book_id'][-4:]}"
         return {"call": ("refund_damaged_copy",
-                         {**refund, "damage_case": guess})}
+                         {**refund, "damage_case": "dmg-00000001"})}
+    hint = ((refunds[-1][1].get("structured") or {}).get("problem", {})
+            .get("hint", "")) if refunds else ""
     if not cases:
         failed = [i for _, i in seen if i["source"] == "report_damage"]
         if failed:
             return {"answer": failed[-1]["text"]}
-        return {"call": ("report_damage", {**refund,
-                                           "description": "torn cover"})}
+        if refunds and "report-damage" not in hint:
+            return {"answer": refunds[-1][1]["text"]}
+        return {"call": ("report_damage", {**refund, "description": said})}
     case_at, case = cases[-1][0], cases[-1][1]["structured"]
     after = [i for n, i in refunds if n > case_at]
     done = [i for i in after if not i["isError"]]
@@ -348,10 +371,13 @@ def stand_in(context, scenario="happy"):
                          {**refund, "damage_case": case["case_id"]})}
     if done:
         amount = done[-1]["structured"]["amount_cents"] / 100
+        confirmed = any(i.get("source") == "refund.succeeded"
+                        for i in context)
+        status = ("Harbor has confirmed it" if confirmed else
+                  "it's pending until Harbor confirms it")
         return {"answer": f"{order_id} was {overview['status']}. "
                           f"I've refunded {amount:.2f} USD for the "
-                          f"damaged {line['title']}, and Harbor has "
-                          f"confirmed it."}
+                          f"damaged {line['title']}, and {status}."}
     if after and "declined" in after[-1]["text"]:
         return {"answer": "You declined the refund on your phone, so "
                           "nothing was changed."}
@@ -369,11 +395,10 @@ def must_hold(name, context):
 
 
 def schema_ok(tools, name, args):
-    import jsonschema
     tool = next((t for t in tools if t["name"] == name), None)
     if tool is None:
         return False
-    return jsonschema.Draft202012Validator(tool["inputSchema"]).is_valid(args)
+    return common.Strict(tool["inputSchema"]).is_valid(args)
 
 
 def digest(name, args):
@@ -422,6 +447,8 @@ async def main(args):
         (OUT / args.fixtures).write_text(json.dumps({
             "scenario": args.scenario, "question": args.question,
             "calls": host.calls, "approvals": host.decisions,
+            "confirmed": [i["refund_id"] for i in host.context
+                          if i.get("source") == "refund.succeeded"],
             "answer": host.answer}, indent=2))
 
 
@@ -430,8 +457,8 @@ if __name__ == "__main__":
     parser.add_argument("--person", default="rosa")
     parser.add_argument("--scenario", default="happy")
     parser.add_argument("--question", default=(
-        "Where's my order ord-5001? The copy of Moby-Dick that came was "
-        "damaged. Can you refund it?"))
+        "Where's my order ord-5001? The copy of Moby-Dick that came has "
+        "a torn cover. Can you refund it?"))
     parser.add_argument("--print-tools", action="store_true")
     parser.add_argument("--fixtures")
     asyncio.run(main(parser.parse_args()))

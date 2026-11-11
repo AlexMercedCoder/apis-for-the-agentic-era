@@ -12,14 +12,21 @@ into keys/ (ignored by Git) and serves, on 127.0.0.1:8120:
 
 The CIBA request carries RFC 9396 authorization_details, and the token
 issued after Rosa approves carries them too, so the refund it allows is
-the one she saw. phone.py plays Rosa's phone; nothing here signs anyone
-in, and no value here is a real credential. Never use it outside the demo.
+the one she saw. The phone is shown what the issuer renders from those
+details (order, book, amount), with the client's binding_message only as
+a code to match the two screens. phone.py plays Rosa's phone: the /phone
+endpoints need a device secret (HARBOR_PHONE_SECRET) that run.sh gives
+only to the issuer and the phone, never to the host, standing in for a
+real device that signs Rosa in. The token response omits the ID Token a
+full CIBA provider returns. No value here is a real credential. Never use
+it outside the demo.
 
     uv run python issuer.py serve
     uv run python issuer.py grant [rosa|sam]    # the assistant's grant
 """
 
 import json
+import os
 import secrets
 import sys
 import time
@@ -52,6 +59,9 @@ EXCHANGES = {"harbor-assistant": {MCP_AUD: {"orders:read"},
              "harbor-support-mcp": {REFUNDS_AUD: {"orders:refund"}}}
 
 pending: dict[str, dict] = {}       # CIBA requests by auth_req_id
+BOOKS = {b["id"]: b["title"] for b in json.loads(
+    (Path(__file__).resolve().parent.parent / "harbor-data" /
+     "books.json").read_text())}
 
 
 def private_key():
@@ -134,17 +144,26 @@ def exchange(client, form):
 def backchannel(client, form):
     """CIBA Core 1.0: ask the person, on her own device, to approve."""
     person = form.get("login_hint", "")
-    if person not in PEOPLE or "orders:refund" not in form.get("scope", ""):
+    scope = form.get("scope", "").split()
+    if person not in PEOPLE or "openid" not in scope \
+            or "orders:refund" not in scope:
         return 400, {"error": "invalid_request"}
     details = json.loads(form.get("authorization_details", "[]"))
     if not details or any(d.get("type") != "harbor_refund"
                           for d in details):
         return 400, {"error": "invalid_authorization_details"}
+    try:
+        display = "; ".join(
+            f"Refund {d['max_amount'] / 100:.2f} {d['currency']} for "
+            f"{BOOKS[d['book_id']]} on {d['order_id']}" for d in details)
+    except (KeyError, TypeError):
+        return 400, {"error": "invalid_authorization_details"}
     auth_req_id = secrets.token_urlsafe(16)
     pending[auth_req_id] = {
         "client": client, "person": person, "status": "pending",
-        "binding_message": form.get("binding_message", ""),
-        "details": details, "expires": time.time() + 120}
+        "binding_message": form.get("binding_message", "")[:40],
+        "display": display, "details": details,
+        "expires": time.time() + 120}
     return 200, {"auth_req_id": auth_req_id, "expires_in": 120,
                  "interval": 1}
 
@@ -171,6 +190,24 @@ def ciba_token(client, form):
     return 200, {"access_token": token, "token_type": "Bearer",
                  "expires_in": 120, "scope": "orders:read orders:refund",
                  "authorization_details": req["details"]}
+
+
+def device_ok(headers):
+    """The stand-in phone's sign-in: a device secret the host never holds."""
+    secret = os.environ.get("HARBOR_PHONE_SECRET", "")
+    given = headers.get("authorization", "").removeprefix("Device ")
+    return len(secret) >= 32 and secrets.compare_digest(secret, given)
+
+
+def phone_decide(headers, form):
+    if not device_ok(headers):
+        return 401, {"error": "invalid_device"}
+    req = pending.get(form.get("auth_req_id", ""))
+    if req is None or req["status"] != "pending":
+        return 400, {"error": "invalid_request"}
+    req["status"] = ("approved" if form.get("decision") == "approve"
+                     else "denied")
+    return 200, {"status": req["status"]}
 
 
 def jwks():
@@ -203,8 +240,10 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/jwks":
             self.reply(200, jwks())
         elif self.path.startswith("/phone/pending?person="):
+            if not device_ok(self.headers):
+                return self.reply(401, {"error": "invalid_device"})
             person = self.path.split("=", 1)[1]
-            self.reply(200, [{"auth_req_id": k,
+            self.reply(200, [{"auth_req_id": k, "display": v["display"],
                               "binding_message": v["binding_message"],
                               "details": v["details"]}
                              for k, v in pending.items()
@@ -217,12 +256,7 @@ class Handler(BaseHTTPRequestHandler):
         size = int(self.headers.get("content-length", 0))
         form = dict(parse_qsl(self.rfile.read(size).decode()))
         if self.path == "/phone/decide":
-            req = pending.get(form.get("auth_req_id", ""))
-            if req is None or req["status"] != "pending":
-                return self.reply(400, {"error": "invalid_request"})
-            req["status"] = ("approved" if form.get("decision") == "approve"
-                             else "denied")
-            return self.reply(200, {"status": req["status"]})
+            return self.reply(*phone_decide(self.headers, form))
         client = form.get("client_id", "")
         if SECRETS.get(client) is None or not secrets.compare_digest(
                 SECRETS[client], form.get("client_secret", "")):

@@ -22,6 +22,7 @@ import asyncio
 import contextvars
 import json
 import logging
+import secrets
 import sys
 
 import jwt
@@ -86,6 +87,8 @@ CARD = AgentCard(
         examples=['{"order_id": "ord-5001", "book_id": "bk-1001", '
                   '"description": "torn cover"}'])],
 )
+# The description is the customer's words relayed by an agent: staff and
+# other agents read it as untrusted text, never as instructions.
 
 
 def request_data(message):
@@ -130,11 +133,16 @@ class DamageExecutor(AgentExecutor):
         await task.start_work(new_text_message(
             f"Checking the carrier's delivery record for {order_id}"))
         await asyncio.sleep(STEP)
-        case_id = f"dmg-{order_id[-4:]}-{book_id[-4:]}"
         found = common.cases()
+        case_id = next((k for k, v in found.items()
+                        if (v["order_id"], v["book_id"]) ==
+                        (order_id, book_id)), None) or \
+            f"dmg-{secrets.token_hex(4)}"           # random, not guessable
         found[case_id] = {"order_id": order_id, "book_id": book_id,
                           "description": ask.get("description", "")[:200],
-                          "reported_by": claims["sub"]}
+                          "description_trust": "untrusted",
+                          "reported_by": claims["sub"],
+                          "via": common.actors(claims)}
         common.STATE.mkdir(exist_ok=True)
         common.CASES.write_text(json.dumps(found, indent=2))
         await task.add_artifact([Part(data=value({

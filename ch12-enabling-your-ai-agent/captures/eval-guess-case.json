@@ -1,6 +1,6 @@
 {
   "scenario": "guess-case",
-  "question": "Where's my order ord-5001? The copy of Moby-Dick that came was damaged. Can you refund it?",
+  "question": "Where's my order ord-5001? The copy of Moby-Dick that came has a torn cover. Can you refund it?",
   "calls": [
     {
       "tool": "order_overview",
@@ -30,7 +30,7 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "damage_case": "dmg-5001-1001"
+        "damage_case": "dmg-00000001"
       },
       "result": {
         "isError": true,
@@ -39,11 +39,11 @@
             "type": "https://harbor.example/problems/damage-case-required",
             "title": "No damage on record",
             "status": 422,
-            "detail": "No damage case dmg-5001-1001 for bk-1001 on ord-5001.",
+            "detail": "No damage case dmg-00000001 for bk-1001 on ord-5001.",
             "hint": "Report the damage to Harbor's fulfillment agent (skill report-damage) and send the case_id it returns."
           }
         },
-        "text": "No damage case dmg-5001-1001 for bk-1001 on ord-5001. Report the damage to Harbor's fulfillment agent (skill report-damage) and send the case_id it returns."
+        "text": "No damage case dmg-00000001 for bk-1001 on ord-5001. Report the damage to Harbor's fulfillment agent (skill report-damage) and send the case_id it returns."
       }
     },
     {
@@ -51,19 +51,19 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "description": "torn cover"
+        "description": "The copy of Moby-Dick that came has a torn cover."
       },
       "result": {
         "isError": false,
         "structured": {
-          "refund_eligible": true,
+          "book_id": "bk-1001",
           "order_id": "ord-5001",
-          "case_id": "dmg-5001-1001",
+          "case_id": "dmg-ea3fd3e6",
           "return_required": false,
-          "book_id": "bk-1001"
+          "refund_eligible": true
         },
-        "text": "Damage recorded as dmg-5001-1001; no return needed.",
-        "task": "bd9dded5-36ba-41e2-b098-fffb9f4b5c34"
+        "text": "Damage recorded as dmg-ea3fd3e6; no return needed.",
+        "task": "231ceaf5-7069-4417-ae49-edcffc09e81c"
       }
     },
     {
@@ -71,26 +71,29 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "damage_case": "dmg-5001-1001"
+        "damage_case": "dmg-ea3fd3e6"
       },
       "result": {
         "isError": false,
         "structured": {
-          "id": "rf-52455a28",
+          "id": "rf-26c9663c",
           "order_id": "ord-5001",
           "book_id": "bk-1001",
           "amount_cents": 1499,
           "currency": "USD",
           "status": "pending",
-          "damage_case": "dmg-5001-1001",
-          "provider_refund": "re_971ac0d6e6faf51a"
+          "damage_case": "dmg-ea3fd3e6",
+          "provider_refund": "re_5435934b1e0bc86d"
         },
-        "text": "{\"id\": \"rf-52455a28\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-5001-1001\", \"provider_refund\": \"re_971ac0d6e6faf51a\"}"
+        "text": "{\"id\": \"rf-26c9663c\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-ea3fd3e6\", \"provider_refund\": \"re_5435934b1e0bc86d\"}"
       }
     }
   ],
   "approvals": [
     "approved"
+  ],
+  "confirmed": [
+    "rf-26c9663c"
   ],
   "answer": "ord-5001 was delivered. I've refunded 14.99 USD for the damaged Moby-Dick, and Harbor has confirmed it."
 }

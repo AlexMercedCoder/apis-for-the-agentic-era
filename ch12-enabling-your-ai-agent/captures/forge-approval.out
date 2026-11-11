@@ -1,0 +1,5 @@
+host reads Rosa's phone queue: 401
+host approves its own request (no secret): 401 invalid_device
+host approves its own request ({'Authorization': 'Device guess'}): 401 invalid_device
+token after the forged approvals: 400 authorization_pending
+CIBA request without openid: 400 invalid_request

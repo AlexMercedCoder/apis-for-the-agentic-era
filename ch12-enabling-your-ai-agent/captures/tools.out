@@ -6,7 +6,7 @@ Chapter 10, one tool per operation: 7 tools, 3301 bytes
   get_order_status     reads
   get_cancellation     reads
   cancel_order         writes
-Chapter 12, one tool per task: 3 tools, 1912 bytes
+Chapter 12, one tool per task: 3 tools, 1906 bytes
   order_overview       reads
   refund_damaged_copy  writes, after approval
   report_damage        records a case

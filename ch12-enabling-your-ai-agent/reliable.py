@@ -9,6 +9,7 @@ returns the first result instead of acting twice.
 import asyncio
 import random
 import time
+from email.utils import parsedate_to_datetime
 
 import httpx
 
@@ -25,8 +26,17 @@ def wait_for(resp, attempt, base=0.25, cap=4.0):
         resp.headers.get("retry-after")
         or resp.headers.get("x-ratelimit-reset"))
     if reset:
-        return float(reset) + random.uniform(0, 0.5)
+        return seconds(reset) + random.uniform(0, 0.5)
     return random.uniform(0, min(cap, base * 2 ** attempt))
+
+
+def seconds(value):
+    """Retry-After is seconds or an HTTP date (RFC 9110, 10.2.3)."""
+    try:
+        return max(0.0, float(value))
+    except ValueError:
+        when = parsedate_to_datetime(value).timestamp()
+        return max(0.0, when - time.time())
 
 
 def busy(resp):
@@ -56,18 +66,27 @@ async def call(send, deadline=10.0, per_try=1.0, tries=4, log=print):
 
 
 class Breaker:
-    """Stop calling an upstream that keeps failing, then try one call."""
+    """Stop calling an upstream that keeps failing, then try one call.
+
+    Closed: every call goes. After `failures` failures in a row it opens
+    and refuses calls; after `cool_off` seconds it lets exactly one trial
+    through (half-open), and that trial's result closes or reopens it.
+    """
 
     def __init__(self, failures=5, cool_off=30.0):
         self.failures, self.cool_off = failures, cool_off
-        self.count, self.opened = 0, None
+        self.count, self.opened, self.trial = 0, None, False
 
     def allow(self):
         if self.opened is None:
             return True
-        return time.monotonic() - self.opened >= self.cool_off
+        if self.trial or time.monotonic() - self.opened < self.cool_off:
+            return False
+        self.trial = True
+        return True
 
     def record(self, ok):
+        self.trial = False
         if ok:
             self.count, self.opened = 0, None
             return

@@ -4,31 +4,31 @@
   "service": "support-host",
   "name": "invoke_agent harbor-support",
   "start_ms": 0,
-  "ms": 3607,
+  "ms": 3532,
   "attrs": {}
  },
  {
   "depth": 1,
   "service": "support-host",
   "name": "tools/call order_overview",
-  "start_ms": 275,
-  "ms": 100,
+  "start_ms": 201,
+  "ms": 114,
   "attrs": {}
  },
  {
   "depth": 2,
   "service": "support-mcp",
   "name": "tools/call order_overview",
-  "start_ms": 309,
-  "ms": 65,
+  "start_ms": 246,
+  "ms": 67,
   "attrs": {}
  },
  {
   "depth": 1,
   "service": "support-host",
   "name": "SendMessage",
-  "start_ms": 474,
-  "ms": 339,
+  "start_ms": 416,
+  "ms": 345,
   "attrs": {
    "a2a.task.state": "TASK_STATE_COMPLETED"
   }
@@ -37,8 +37,8 @@
   "depth": 2,
   "service": "fulfillment",
   "name": "SendMessage",
-  "start_ms": 509,
-  "ms": 304,
+  "start_ms": 453,
+  "ms": 306,
   "attrs": {
    "enduser.id": "rosa"
   }
@@ -47,8 +47,8 @@
   "depth": 1,
   "service": "support-host",
   "name": "approval harbor_refund",
-  "start_ms": 814,
-  "ms": 1080,
+  "start_ms": 762,
+  "ms": 1082,
   "attrs": {
    "harbor.approval.decision": "approved"
   }
@@ -57,24 +57,24 @@
   "depth": 1,
   "service": "support-host",
   "name": "tools/call refund_damaged_copy",
-  "start_ms": 1895,
-  "ms": 1712,
+  "start_ms": 1844,
+  "ms": 1688,
   "attrs": {}
  },
  {
   "depth": 2,
   "service": "support-mcp",
   "name": "tools/call refund_damaged_copy",
-  "start_ms": 1962,
-  "ms": 1644,
+  "start_ms": 1908,
+  "ms": 1622,
   "attrs": {}
  },
  {
   "depth": 3,
   "service": "refunds-api",
   "name": "POST /orders/{order_id}/refunds",
-  "start_ms": 2073,
-  "ms": 1638,
+  "start_ms": 2018,
+  "ms": 1635,
   "attrs": {
    "enduser.id": "rosa"
   }
@@ -83,16 +83,16 @@
   "depth": 4,
   "service": "refunds-api",
   "name": "POST /v1/refunds",
-  "start_ms": 2106,
-  "ms": 103,
+  "start_ms": 2051,
+  "ms": 100,
   "attrs": {}
  },
  {
   "depth": 3,
   "service": "refunds-api",
   "name": "POST /orders/{order_id}/refunds",
-  "start_ms": 3572,
-  "ms": 32,
+  "start_ms": 3487,
+  "ms": 43,
   "attrs": {
    "enduser.id": "rosa"
   }
@@ -101,7 +101,7 @@
   "depth": 1,
   "service": "support-host",
   "name": "await refund.succeeded",
-  "start_ms": 3607,
+  "start_ms": 3532,
   "ms": 0,
   "attrs": {}
  }

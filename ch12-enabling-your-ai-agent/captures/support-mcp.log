@@ -1,5 +1,5 @@
 tools/call order_overview caller=cus-001 act=harbor-assistant
-refund attempt 1: timed out after 1.0 s, retry in 0.5 s
+refund attempt 1: timed out after 1.0 s, retry in 0.4 s
 refund ord-5001 bk-1001 -> 201 replayed
 tools/call refund_damaged_copy caller=cus-001 act=harbor-assistant
 tools/call order_overview caller=cus-002 act=harbor-assistant

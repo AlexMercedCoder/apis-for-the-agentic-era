@@ -28,6 +28,10 @@ for n, recorded in enumerate(session["calls"], 1):
     assert held == (name in host.WRITES), f"step {n}: hold rule changed"
     print(f"{n}. {name} {'held for approval' if held else 'ran'}: ok")
     context.append({"role": "tool", "source": name, **recorded["result"]})
+    rid = (recorded["result"].get("structured") or {}).get("id")
+    if rid in session.get("confirmed", []):
+        context.append({"role": "event", "source": "refund.succeeded",
+                        "refund_id": rid})
 final = host.stand_in(context, session["scenario"])
 assert final.get("answer") == session["answer"], "the answer changed"
 print(f"answer matches; {len(session['calls'])} calls replayed")

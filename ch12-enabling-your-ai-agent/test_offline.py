@@ -2,13 +2,18 @@
 
   * reliable.call(): a timeout then a replay, a 429 that names its reset,
     a 409 for a request still running, and giving up at the deadline;
-  * reliable.Breaker opens after repeated failures and lets one call
-    through after the cool-off;
+  * reliable.Breaker opens after repeated failures and lets exactly one
+    trial through after the cool-off; Retry-After as an HTTP date;
+  * the stand-in phone refuses a decision without its device secret, and
+    the issuer refuses a CIBA request without openid;
   * the issuer's exchange rules: no widening, no other audience, and the
     delegation chain kept (RFC 8693 nested act);
-  * the refunds API's refusals, as a contract test with FastAPI's
-    TestClient: no token, someone else's order, no damage case on
-    record, and a refund outside what the person approved.
+  * the refunds API, as a contract test with FastAPI's TestClient and a
+    mock provider: no token, no actor, someone else's order, a key that
+    isn't the approval's request_id, no damage case, a refund outside the
+    approval, a provider failure that frees the line, a restart that
+    still refuses a second refund, and a provider key per order line, so
+    even a lost state file can't refund twice.
 
     uv run python test_offline.py
 """
@@ -75,9 +80,36 @@ def test_breaker():
     b.record(False)
     assert not b.allow()
     time.sleep(0.12)
+    assert b.allow() and not b.allow()       # one trial, not a flood
+    b.record(False)
+    assert not b.allow()
+    time.sleep(0.12)
     assert b.allow()
     b.record(True)
-    assert b.allow() and b.count == 0
+    assert b.allow() and b.allow() and b.count == 0
+
+
+def test_retry_after_date():
+    date = time.strftime("%a, %d %b %Y %H:%M:%S GMT",
+                         time.gmtime(time.time() + 30))
+    assert 25 <= reliable.seconds(date) <= 31
+    assert reliable.seconds("7") == 7
+
+
+class Headers(dict):
+    def get(self, k, d=None):
+        return super().get(k.lower(), d)
+
+
+def test_phone_needs_device():
+    form = {"auth_req_id": "x", "decision": "approve"}
+    assert issuer.phone_decide(Headers(), form)[0] == 401
+    assert issuer.phone_decide(Headers(authorization="Device guess"),
+                               form)[0] == 401
+    status, err = issuer.backchannel("harbor-assistant", {
+        "scope": "orders:refund", "login_hint": "rosa",
+        "authorization_details": json.dumps([{"type": "harbor_refund"}])})
+    assert (status, err["error"]) == (400, "invalid_request")
 
 
 def form(client, subject, audience, scope):
@@ -110,55 +142,96 @@ def test_exchange_rules():
                                      "harbor-assistant"]
 
 
-def token(person, customer, details):
-    return issuer.sign({
-        "sub": person, "customer_id": customer, "azp": "harbor-support-mcp",
-        "aud": issuer.REFUNDS_AUD, "scope": "orders:refund",
-        "act": {"client_id": "harbor-support-mcp",
-                "act": {"client_id": "harbor-assistant"}},
-        "authorization_details": details}, 60)
+def token(person, customer, details, act=True):
+    claims = {"sub": person, "customer_id": customer,
+              "azp": "harbor-support-mcp", "aud": issuer.REFUNDS_AUD,
+              "scope": "orders:refund", "authorization_details": details}
+    if act:
+        claims["act"] = {"client_id": "harbor-support-mcp",
+                         "act": {"client_id": "harbor-assistant"}}
+    return issuer.sign(claims, 60)
 
 
-def test_refund_refusals():
+def approval(n, amount=1499):
+    return {"type": "harbor_refund", "order_id": "ord-5001",
+            "book_id": "bk-1001", "max_amount": amount,
+            "request_id": f"00000000-0000-4000-8000-00000000000{n}"}
+
+
+def reset_api():
+    for store in (refunds_api.refunds, refunds_api.by_line,
+                  refunds_api.keys, refunds_api.payments):
+        store.clear()
+    refunds_api.payments["ord-5001"] = "pi_test"
+
+
+def test_refunds_api():
     common.STATE.mkdir(exist_ok=True)
-    saved = common.CASES.read_text() if common.CASES.exists() else None
-    common.CASES.write_text("{}")
-    try:
-        api = TestClient(refunds_api.app)
-        approval = [{"type": "harbor_refund", "order_id": "ord-5001",
-                     "book_id": "bk-1001", "max_amount": 1499}]
-        body = {"book_id": "bk-1001", "damage_case": "dmg-5001-1001"}
+    saved = {p: p.read_text() for p in (common.CASES, refunds_api.STORE)
+             if p.exists()}
+    calls, fail = [], {"next": False}
 
-        def post(tok, key):
-            headers = {"Idempotency-Key": f'"{key}"'}
+    def provider(request):
+        if fail["next"]:
+            fail["next"] = False
+            return httpx.Response(502)
+        key = request.headers["idempotency-key"]
+        calls.append(key)
+        return httpx.Response(200, json={"id": "re_" + key[-8:]})
+    refunds_api.PROVIDER_TRANSPORT = httpx.MockTransport(provider)
+    try:
+        reset_api()
+        common.CASES.write_text("{}")
+        api = TestClient(refunds_api.app)
+        body = {"book_id": "bk-1001", "damage_case": "dmg-0000beef"}
+
+        def post(tok, n):
+            headers = {"Idempotency-Key":
+                       f'"00000000-0000-4000-8000-00000000000{n}"'}
             if tok:
                 headers["Authorization"] = f"Bearer {tok}"
             return api.post("/orders/ord-5001/refunds", json=body,
                             headers=headers)
-        keys = iter(f"00000000-0000-4000-8000-00000000000{n}"
-                    for n in range(10))
-        assert post(None, next(keys)).status_code == 401
-        sam = post(token("sam", "cus-002", approval), next(keys))
-        assert sam.status_code == 404
-        rosa = token("rosa", "cus-001", approval)
-        no_case = post(rosa, next(keys))
+        rosa = token("rosa", "cus-001", [approval(1)])
+        assert post(None, 1).status_code == 401
+        assert post(token("rosa", "cus-001", [approval(1)], act=False),
+                    1).status_code == 401
+        assert post(token("sam", "cus-002", [approval(1)]),
+                    1).status_code == 404
+        assert post(rosa, 2).status_code == 403          # key not approved
+        no_case = post(rosa, 1)
         assert no_case.status_code == 422
         assert "report-damage" in no_case.json()["hint"]
-        common.CASES.write_text(json.dumps({"dmg-5001-1001": {
+        common.CASES.write_text(json.dumps({"dmg-0000beef": {
             "order_id": "ord-5001", "book_id": "bk-1001"}}))
-        cheap = [dict(approval[0], max_amount=999)]
-        outside = post(token("rosa", "cus-001", cheap), next(keys))
-        assert outside.status_code == 403
-        assert outside.headers["content-type"] == \
+        cheap = token("rosa", "cus-001", [approval(1, amount=999)])
+        assert post(cheap, 1).status_code == 403
+        assert post(cheap, 1).headers["content-type"] == \
             "application/problem+json"
+        fail["next"] = True
+        assert post(rosa, 1).status_code == 502          # nothing moved
+        assert post(rosa, 1).status_code == 201          # line was freed
+        assert post(rosa, 1).headers["idempotent-replayed"] == "true"
+        for store in (refunds_api.refunds, refunds_api.by_line,
+                      refunds_api.keys):
+            store.clear()                                 # a restart
+        refunds_api.load()
+        again = post(token("rosa", "cus-001", [approval(3)]), 3)
+        assert again.status_code == 409                  # already refunded
+        reset_api()                                      # state file lost
+        post(rosa, 1)
+        assert len(set(calls)) == 1, calls               # provider dedupes
     finally:
-        if saved is None:
-            common.CASES.unlink()
-        else:
-            common.CASES.write_text(saved)
+        refunds_api.PROVIDER_TRANSPORT = None
+        for p in (common.CASES, refunds_api.STORE):
+            if p in saved:
+                p.write_text(saved[p])
+            elif p.exists():
+                p.unlink()
 
 
-for test in (test_retries, test_breaker, test_exchange_rules,
-             test_refund_refusals):
+for test in (test_retries, test_breaker, test_retry_after_date,
+             test_phone_needs_device, test_exchange_rules,
+             test_refunds_api):
     test()
     print(f"ok  {test.__name__}")

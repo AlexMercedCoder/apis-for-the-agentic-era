@@ -18,6 +18,8 @@ uv sync -q
 (cd ../ch09-payment-standards && uv sync -q)
 export HARBOR_AUDIT_KEY=$(python3 -c \
   "import secrets; print(secrets.token_hex(32))")   # random per run
+# The stand-in phone's device secret: only the issuer and phone.py get it.
+PHONE_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
 PIDS=()
 STACK=()
 cleanup() {
@@ -45,14 +47,15 @@ wait_free() {
 
 # Harbor's services that hold per-run state: refunds, payments, cases.
 start_stack() {
-  rm -f state/damage-cases.json state/phone-mode
+  rm -f state/damage-cases.json state/phone-mode state/refunds.json
   uv run -q python payment_provider.py 2>> "$OUT/provider.log" &
   STACK+=($!)
   uv run -q python refunds_api.py "$@" 2>> "$OUT/refunds-api.log" &
   STACK+=($!)
   uv run -q python fulfillment_agent.py 2>> "$OUT/fulfillment.log" &
   STACK+=($!)
-  uv run -q python phone.py rosa >> "$OUT/phone.log" &
+  HARBOR_PHONE_SECRET=$PHONE_SECRET uv run -q python phone.py rosa \
+    >> "$OUT/phone.log" &
   STACK+=($!)
   wait_port 8091; wait_port 8123; wait_port 8124
   uv run -q python seed_payment.py > /dev/null
@@ -67,7 +70,8 @@ stop_stack() {
 : > "$OUT/fulfillment.log"; : > "$OUT/phone.log"
 
 uv run -q python render.py
-uv run -q python issuer.py serve & PIDS+=($!)
+HARBOR_PHONE_SECRET=$PHONE_SECRET uv run -q python issuer.py serve &
+PIDS+=($!)
 wait_port 8120
 (cd ../ch05-graphql-apis && exec uv run -q python harbor_graphql.py \
    --trusted-only 2> /dev/null) & PIDS+=($!)
@@ -88,6 +92,12 @@ sleep 1
 uv run -q python show_trace.py > "$OUT/trace.out"
 uv run -q python show_trace.py --json > "$OUT/trace.json"
 cp "$OUT/gateway/access.jsonl" "$OUT/gateway-access.jsonl"
+
+# 2b. The host can't answer for Rosa: the phone endpoints need the device
+#     secret, which the host's environment doesn't have.
+echo deny > state/phone-mode   # Rosa would decline a request she didn't make
+uv run -q python forge_approval.py > "$OUT/forge-approval.out"
+sleep 1; rm -f state/phone-mode
 
 # 3. A rate limit the host waits out: Sam's assistant, eleven reads.
 uv run -q python rate_limit_demo.py > "$OUT/rate-limit.out"

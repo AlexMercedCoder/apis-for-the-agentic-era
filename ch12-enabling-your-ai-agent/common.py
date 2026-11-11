@@ -10,6 +10,9 @@ import json
 import os
 from pathlib import Path
 
+import re
+
+import jsonschema
 import jwt
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -84,3 +87,21 @@ def tracer(name):
 def current_trace_id():
     ctx = trace.get_current_span().get_span_context()
     return f"{ctx.trace_id:032x}" if ctx.trace_id else None
+
+
+def _strict_pattern(validator, pattern, instance, schema):
+    r"""`pattern` with ECMA-262's `$` (Chapter 10): nothing after the end.
+
+    Python's re.search lets `$` match before a final newline, so
+    "ord-5001\n" would pass ^ord-[0-9]{4}$; a final `$` becomes `\Z`.
+    """
+    if not validator.is_type(instance, "string"):
+        return
+    strict = pattern[:-1] + r"\Z" if pattern.endswith("$") else pattern
+    if not re.search(strict, instance):
+        yield jsonschema.ValidationError(
+            f"{instance!r} does not match {pattern!r}")
+
+
+Strict = jsonschema.validators.extend(jsonschema.Draft202012Validator,
+                                      {"pattern": _strict_pattern})

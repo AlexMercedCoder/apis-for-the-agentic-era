@@ -21,7 +21,6 @@ approval's authorization_details, so one approval can refund once.
 
 import json
 import logging
-import re
 import sys
 
 import httpx
@@ -96,7 +95,7 @@ TOOLS = [
         input_schema={"type": "object", "properties": {
             "order_id": ORDER_ID, "book_id": BOOK_ID,
             "damage_case": {"type": "string",
-                            "pattern": "^dmg-[0-9]{4}-[0-9]{4}$",
+                            "pattern": "^dmg-[0-9a-f]{8}$",
                             "description": "case_id from report-damage"}},
             "required": ["order_id", "book_id", "damage_case"],
             "additionalProperties": False},
@@ -107,18 +106,8 @@ TOOLS = [
 SCHEMAS = {t.name: t.input_schema for t in TOOLS}
 
 
-def _strict_pattern(validator, pattern, instance, schema):
-    r"""`pattern` with ECMA-262's `$` (Chapter 10): nothing after the end."""
-    if not validator.is_type(instance, "string"):
-        return
-    strict = pattern[:-1] + r"\Z" if pattern.endswith("$") else pattern
-    if not re.search(strict, instance):
-        yield jsonschema.ValidationError(
-            f"{instance!r} does not match {pattern!r}")
-
-
-Strict = jsonschema.validators.extend(jsonschema.Draft202012Validator,
-                                      {"pattern": _strict_pattern})
+Strict = common.Strict
+BREAKER = reliable.Breaker()             # for the refunds upstream
 
 
 class Verifier:
@@ -199,13 +188,18 @@ async def refund_damaged_copy(args, claims, raw_token):
         async with httpx.AsyncClient(timeout=timeout) as http:
             return await http.post(url, json=body, headers=headers)
 
+    if not BREAKER.allow():
+        return tool_error("Harbor's refunds API is failing; try again in "
+                          "a minute. Nothing was refunded by this call.")
     try:
         resp = await reliable.call(send, deadline=8.0, per_try=1.0,
                                    log=lambda m: log.info("refund %s", m))
     except reliable.GaveUp as err:
+        BREAKER.record(False)
         log.info("refund gave up: %s", err)
         return tool_error("Harbor's refunds API didn't answer in time. "
                           "Retrying with the same approval is safe.")
+    BREAKER.record(resp.status_code < 500)
     replay = resp.headers.get("idempotent-replayed") == "true"
     log.info("refund %s %s -> %s%s", args["order_id"], args["book_id"],
              resp.status_code, " replayed" if replay else "")

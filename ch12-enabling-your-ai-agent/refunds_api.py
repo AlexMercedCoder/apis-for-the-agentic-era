@@ -2,12 +2,19 @@
 
 POST /orders/{order_id}/refunds refunds one damaged copy of one book on a
 delivered order. It is narrow on purpose: the token must carry
-orders:refund and an RFC 9396 authorization_details entry naming this
-order, this book, and an amount at least the line's price, which only
-Rosa's approval on her phone produces; the damage must already be on
-record with Harbor's fulfillment agent; each line refunds once; and the
-Idempotency-Key (Chapter 3's format) makes a retried request return the
-first result. Errors are Chapter 3's problem details with a hint.
+orders:refund, the support MCP server as its current actor, and an RFC 9396
+authorization_details entry naming this order, this book, and an amount
+at least the line's price, which only Rosa's approval on her phone
+produces; the Idempotency-Key (Chapter 3's format) must be that
+approval's request_id, so a retried request returns the first result;
+the damage must already be on record with Harbor's fulfillment agent;
+and each line refunds once. Errors are Chapter 3's problem details with
+a hint.
+
+Refunds, the line index, and saved responses are written to
+state/refunds.json, and the provider call's Idempotency-Key is derived
+from the order line, so a restart between an attempt and its retry
+can't refund twice. A provider failure undoes the claim on the line.
 
 The refund is pending until the payment provider's signed charge.refunded
 webhook arrives (Chapter 9's rule), and then Harbor tells its support
@@ -45,6 +52,8 @@ HOST_HOOK, HOST_SECRET = common.HOST_HOOK, common.HOST_SECRET
 KEY = re.compile(r'"[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"')
 PROBLEMS = "https://harbor.example/problems/"
 SLOW_FIRST = False
+PROVIDER_TRANSPORT = None                         # tests inject a mock
+STORE = common.STATE / "refunds.json"
 
 log = logging.getLogger("refunds")
 logging.basicConfig(stream=sys.stderr, level=logging.INFO,
@@ -57,6 +66,27 @@ refunds: dict[str, dict] = {}      # refund_id -> refund
 by_line: dict[tuple, str] = {}     # (order_id, book_id) -> refund_id
 keys: dict[tuple, dict] = {}       # (customer, key) -> saved response
 seen_hooks: set[str] = set()
+early_hooks: dict[str, dict] = {}  # provider refund id -> event, if early
+
+
+def save():
+    """Persist what a restart must not forget (a database in production)."""
+    common.STATE.mkdir(exist_ok=True)
+    STORE.write_text(json.dumps({
+        "payments": payments, "refunds": refunds,
+        "by_line": [[*k, v] for k, v in by_line.items()],
+        "keys": [[*k, v] for k, v in keys.items()
+                 if v["response"] is not None]}))
+
+
+def load():
+    if not STORE.exists():
+        return
+    doc = json.loads(STORE.read_text())
+    payments.update(doc["payments"])
+    refunds.update(doc["refunds"])
+    by_line.update({(o, b): r for o, b, r in doc["by_line"]})
+    keys.update({(c, k): v for c, k, v in doc["keys"]})
 
 
 class RefundRequest(BaseModel):
@@ -64,7 +94,7 @@ class RefundRequest(BaseModel):
     book_id: str = Field(pattern=r"^bk-[0-9]{4}$",
                          description="The damaged book, such as bk-1001.")
     damage_case: str = Field(
-        pattern=r"^dmg-[0-9]{4}-[0-9]{4}$",
+        pattern=r"^dmg-[0-9a-f]{8}$",
         description="The case ID Harbor's fulfillment agent returned "
                     "when the damage was reported.")
 
@@ -84,6 +114,8 @@ def caller(authorization):
     claims = common.check_token(authorization[7:], issuer.REFUNDS_AUD)
     if "orders:refund" not in claims.get("scope", "").split():
         raise PermissionError
+    if claims.get("act", {}).get("client_id") != "harbor-support-mcp":
+        raise PermissionError        # RFC 8693: the current actor counts
     return claims
 
 
@@ -112,6 +144,12 @@ async def create_refund(order_id: str, body: RefundRequest,
             return problem(400, "idempotency-key-invalid",
                            "Idempotency-Key required",
                            "Send a lowercase UUID in double quotes.")
+        approved_keys = {f'"{d.get("request_id")}"' for d in
+                         claims.get("authorization_details", [])}
+        if idempotency_key not in approved_keys:
+            return problem(403, "key-not-approved", "Key not approved",
+                           "The Idempotency-Key must be the request_id of "
+                           "the person's approval.")
         slot = (customer, idempotency_key)
         fingerprint = [order_id, body.model_dump()]
         saved = keys.get(slot)
@@ -132,11 +170,16 @@ async def create_refund(order_id: str, body: RefundRequest,
             return JSONResponse(doc, status_code=status,
                                 headers={"Idempotent-Replayed": "true"})
         keys[slot] = {"fingerprint": fingerprint, "response": None}
-        result = await decide(order_id, body, claims, who)
+        try:
+            result = await decide(order_id, body, claims, who)
+        except Exception:
+            del keys[slot]
+            raise
         keys[slot]["response"] = (result.status_code,
                                   json.loads(result.body))
         if result.status_code >= 400:
             del keys[slot]           # a refusal may be retried once fixed
+        save()
         global SLOW_FIRST
         if SLOW_FIRST and result.status_code == 201:
             SLOW_FIRST = False
@@ -192,19 +235,32 @@ async def decide(order_id, body, claims, who):
               "damage_case": body.damage_case}
     refunds[refund["id"]] = refund
     by_line[(order_id, body.book_id)] = refund["id"]
-    with tracer.start_as_current_span(
-            "POST /v1/refunds", kind=SpanKind.CLIENT,
-            attributes={"http.request.method": "POST",
-                        "server.address": "payment-provider"}):
-        async with httpx.AsyncClient(timeout=5) as http:
-            resp = await http.post(
-                f"{PROVIDER}/v1/refunds",
-                headers={"Authorization": f"Bearer {PROVIDER_KEY}",
-                         "Idempotency-Key": refund["id"]},
-                data={"payment_intent": payments[order_id],
-                      "amount": str(amount)})
-    resp.raise_for_status()
+    try:
+        with tracer.start_as_current_span(
+                "POST /v1/refunds", kind=SpanKind.CLIENT,
+                attributes={"http.request.method": "POST",
+                            "server.address": "payment-provider"}):
+            async with httpx.AsyncClient(
+                    timeout=5, transport=PROVIDER_TRANSPORT) as http:
+                resp = await http.post(
+                    f"{PROVIDER}/v1/refunds",
+                    headers={"Authorization": f"Bearer {PROVIDER_KEY}",
+                             "Idempotency-Key":
+                                 f"refund-{order_id}-{body.book_id}"},
+                    data={"payment_intent": payments[order_id],
+                          "amount": str(amount)})
+        resp.raise_for_status()
+    except httpx.HTTPError as err:
+        del refunds[refund["id"]]           # nothing moved: free the line
+        del by_line[(order_id, body.book_id)]
+        log.info("502 provider %s %s", type(err).__name__, order_id)
+        return problem(502, "provider-unavailable", "Provider unavailable",
+                       "The payment provider didn't confirm the refund; "
+                       "nothing was refunded.",
+                       hint="Retry later with the same approval.")
     refund["provider_refund"] = resp.json()["id"]
+    if refund["provider_refund"] in early_hooks:
+        settle(early_hooks.pop(refund["provider_refund"]))
     log.info("201 %s %s %s %d cents, provider %s", refund["id"], order_id,
              body.book_id, amount, refund["provider_refund"])
     return JSONResponse(refund, status_code=201, headers={
@@ -243,18 +299,26 @@ async def payment_webhook(request: Request):
     if event["type"] == "payment_intent.succeeded":
         payments[obj["metadata"]["order_id"]] = obj["id"]
     elif event["type"] == "charge.refunded":
-        refund = next((r for r in refunds.values()
-                       if r["status"] == "pending"
-                       and payments.get(r["order_id"]) ==
-                       obj["payment_intent"]
-                       and r["amount_cents"] == obj["amount"]), None)
-        if refund:
-            refund["status"] = "succeeded"
-            log.info("webhook charge.refunded %s -> %s succeeded",
-                     obj["id"], refund["id"])
-            asyncio.create_task(tell_host(refund))
+        if not settle(obj):
+            early_hooks[obj["id"]] = obj      # before we saved its ID
     seen_hooks.add(msg_id)
+    save()
     return Response(status_code=204)
+
+
+def settle(obj):
+    """Mark the refund whose provider ID this is; tell the host."""
+    refund = next((r for r in refunds.values()
+                   if r.get("provider_refund") == obj["id"]), None)
+    if refund is None:
+        return False
+    if refund["status"] == "pending" and obj["amount"] == \
+            refund["amount_cents"]:
+        refund["status"] = "succeeded"
+        log.info("webhook charge.refunded %s -> %s succeeded",
+                 obj["id"], refund["id"])
+        asyncio.get_event_loop().create_task(tell_host(refund))
+    return True
 
 
 async def tell_host(refund):
@@ -285,6 +349,7 @@ if __name__ == "__main__":
         print(json.dumps(app.openapi(), indent=2))
         sys.exit()
     SLOW_FIRST = args.slow_first
+    load()
     for noisy in ("httpx", "uvicorn.access"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
     uvicorn.run(app, host="127.0.0.1", port=8123, log_level="warning")

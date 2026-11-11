@@ -35,7 +35,7 @@
         },
         "damage_case": {
           "type": "string",
-          "pattern": "^dmg-[0-9]{4}-[0-9]{4}$",
+          "pattern": "^dmg-[0-9a-f]{8}$",
           "description": "case_id from report-damage"
         }
       },
