@@ -9,6 +9,7 @@ stack, never a value to reuse.
 """
 
 import sys
+import time
 
 import httpx
 
@@ -28,10 +29,20 @@ API_SCOPES = {
 
 
 def admin_client():
-    token = httpx.post(
-        f"{KC}/realms/master/protocol/openid-connect/token",
-        data={"grant_type": "password", "client_id": "admin-cli",
-              "username": ADMIN[0], "password": ADMIN[1]}).raise_for_status()
+    # Keycloak answers its realm page before the admin login is ready, so
+    # retry the token request for up to a minute instead of racing it.
+    for attempt in range(60):
+        try:
+            token = httpx.post(
+                f"{KC}/realms/master/protocol/openid-connect/token",
+                data={"grant_type": "password", "client_id": "admin-cli",
+                      "username": ADMIN[0], "password": ADMIN[1]})
+            token.raise_for_status()
+            break
+        except httpx.HTTPError:
+            if attempt == 59:
+                raise
+            time.sleep(1)
     return httpx.Client(
         base_url=f"{KC}/admin/realms",
         headers={"Authorization": f"Bearer {token.json()['access_token']}"})
