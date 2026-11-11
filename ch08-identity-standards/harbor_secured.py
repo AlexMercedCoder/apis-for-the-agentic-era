@@ -199,7 +199,7 @@ class TokenGate:
         for k, v in scope["headers"]:
             name = k.decode().lower()
             seen.append(name)
-            headers[name] = v.decode()
+            headers[name] = v.decode("latin-1")  # never fails on obs-text
         bound = False
         try:
             for single in ("authorization", "dpop"):
