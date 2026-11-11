@@ -99,7 +99,9 @@ async def idempotent(request: Request, account: str, handler):
     """Replay a saved response for a repeated Idempotency-Key.
 
     Keys are scoped to the account. The same key with different
-    parameters is refused, the way payment APIs and the IETF draft do.
+    parameters gets 400, as payment providers answer it; the IETF
+    Idempotency-Key draft recommends 422 for the same mistake. A request
+    that arrives while the first is still running gets 409 (both agree).
     """
     form = await read_form(request)
     key = request.headers.get("idempotency-key")

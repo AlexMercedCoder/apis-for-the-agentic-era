@@ -1,6 +1,6 @@
-create session: 201 cs_7d2d98a699ca ready_for_payment total=2299
+create session: 201 cs_e68c57246521 ready_for_payment total=2299
 host: 2299 <= Rosa's limit 3000, approved
-delegate_payment: 201 vt_515509e392fda5f9
+delegate_payment: 201 vt_758dc767b53bd1bd
 complete: 200 completed order=ord-5006
 misuse of delegated tokens:
   same token, second charge         402 allowance already used (one_time)

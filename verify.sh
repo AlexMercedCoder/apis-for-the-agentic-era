@@ -490,6 +490,7 @@ check "ch09: lost response retried with one key charges once; no key twice" \
 check "ch09: the order turns paid on the signed webhook; refund replayed once" \
   bash -c "grep -q 'ord-5005 at Harbor: paid' '$CH09/checkout.out' &&
            grep -q -- '-> ord-5005 paid' '$CH09/harbor.log' &&
+           [ \$(grep -c 'no open order matches' '$CH09/harbor.log') -ge 2 ] &&
            [ \$(grep -c '^refund re_' '$CH09/provider.log') -eq 1 ] &&
            grep -q 'attempt 2: 200 re_[0-9a-f]* replayed=true' '$CH09/checkout.out'"
 check "ch09: the card number never reaches Harbor" \

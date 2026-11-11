@@ -59,22 +59,26 @@ async def payment_webhook(request: Request) -> Response:
     if msg_id in seen_webhooks:
         log(f"204 {msg_id} duplicate, already processed")
         return Response(status_code=204)
-    seen_webhooks.add(msg_id)
     event = json.loads(body)
     obj = event["data"]["object"]
+    note = "recorded, no open order matches"
     if event["type"] == "payment_intent.succeeded":
         order = orders.get(obj["metadata"].get("order_id", ""))
         if order and order["status"] == "placed":
-            if obj["amount"] == order["total_cents"]:
+            if (obj["amount"], obj["currency"]) == (order["total_cents"],
+                                                    "usd"):
                 order["status"] = "paid"
                 order["payment_intent"] = obj["id"]
-                log(f"204 {event['type']} {obj['id']} -> "
-                    f"{order['id']} paid")
-                return Response(status_code=204)
-            log(f"204 {event['type']} {obj['id']} amount mismatch, "
-                "held for review")
-            return Response(status_code=204)
-    log(f"204 {event['type']} {obj['id']} recorded")
+                note = f"{order['id']} paid"
+            else:
+                note = "amount or currency mismatch, held for review"
+    elif event["type"] == "charge.refunded":
+        note = "refund recorded"
+    # Record the delivery only after the state change. A real service
+    # writes both in one database transaction, so a crash in between
+    # lets the provider's retry finish the work instead of skipping it.
+    seen_webhooks.add(msg_id)
+    log(f"204 {event['type']} {obj['id']} -> {note}")
     return Response(status_code=204)
 
 

@@ -36,7 +36,13 @@ def dump_request(path: str, request: httpx.Request) -> None:
 
 
 def charge(form: dict, key: str | None, dump: str | None = None) -> dict:
-    """POST a payment intent, retrying with the same key until answered."""
+    """POST a payment intent, retrying with the same key until answered.
+
+    Retries back off and stop after four attempts. A real service also
+    stops retrying a key once the provider may have pruned it (Stripe
+    keeps keys at least 24 hours) and looks the payment up by the order
+    ID in its metadata before trying again.
+    """
     headers = dict(AUTH)
     if key:
         headers["Idempotency-Key"] = key
@@ -51,6 +57,7 @@ def charge(form: dict, key: str | None, dump: str | None = None) -> dict:
                 r = client.send(request)
         except httpx.TimeoutException:
             print(f"  attempt {attempt}: timed out after 1.0 s")
+            time.sleep(0.2 * attempt)
             continue
         replayed = r.headers.get("idempotent-replayed", "false")
         body = r.json()

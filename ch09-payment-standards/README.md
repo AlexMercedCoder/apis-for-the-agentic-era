@@ -50,9 +50,9 @@ declines). The webhook secret is Chapter 6's placeholder.
 | File | What it is |
 |---|---|
 | `provider.py` | stand-in payment provider on `127.0.0.1:8091`: `POST /v1/payment_methods` (publishable key; tokenizes test cards), `POST /v1/payment_intents` and `POST /v1/refunds` (form-encoded, secret key, `Idempotency-Key` scoped to the account: replay with `Idempotent-Replayed: true`, 409 while the first request runs, 400 for the same key with other parameters), ACP `POST /agentic_commerce/delegate_payment` (vault token with an allowance; charges check merchant, amount, currency, session, expiry, one use). Sends Standard Webhooks-signed `payment_intent.succeeded` and `charge.refunded` to Harbor. `--slow-first N` holds the first N charge responses 1.5 s. Ledger lines go to stderr (`captures/provider.log`) |
-| `harbor_shop.py` | Harbor on `127.0.0.1:8009`: `POST /hooks/payments` (verifies, deduplicates, marks an order paid if the amount matches), `GET /orders/{id}`, ACP seller endpoints `POST /checkout_sessions`, `GET` and `POST .../complete` (require `Authorization`, `API-Version: 2026-04-17`, `Idempotency-Key`; complete charges with key `acp-complete-<session>`), x402 `GET /books/{id}/excerpt` (10000 units of test-network USDC) |
+| `harbor_shop.py` | Harbor on `127.0.0.1:8009`: `POST /hooks/payments` (verifies, marks an order paid only if amount and currency match, holds a mismatch for review, records the delivery ID after the state change; webhooks for charges with no open order are only recorded), `GET /orders/{id}`, ACP seller endpoints `POST /checkout_sessions`, `GET` and `POST .../complete` (require `Authorization`, `API-Version: 2026-04-17`, `Idempotency-Key`; complete charges with key `acp-complete-<session>`), x402 `GET /books/{id}/excerpt` (10000 units of test-network USDC) |
 | `x402_local.py` | x402 v2 `PaymentRequired`, `PaymentPayload`, and settlement objects; the `exact` EVM scheme (EIP-712 typed data for EIP-3009 `TransferWithAuthorization`, network `eip155:84532`); a stand-in facilitator whose verify checks version, requirements, recipient, amount, time window, signature, and nonce, and whose settle records the nonce and broadcasts nothing (`transaction` is empty) |
-| `checkout_demo.py` | steps 1 to 5 of the provider checkout; `--dump` writes the first charge request |
+| `checkout_demo.py` | steps 1 to 5 of the provider checkout; retries back off and stop after four attempts; `--dump` writes the first charge request |
 | `acp_demo.py` | the ACP agent checkout and the token-misuse table; writes the ACP messages as JSON for the contract check |
 | `x402_demo.py` | the x402 purchase, replay, and tampered payment; `--dump` writes the decoded exchange |
 | `check_contract.py` | validates the captured ACP messages against the pinned OpenAPI schemas |
@@ -103,8 +103,19 @@ IDs (`pm_`, `pi_`, `re_`, `vt_`, `cs_`) and timestamps change on every run.
 - In ACP `2026-04-17`, `CheckoutSessionWithOrder` combines
   `CheckoutSessionBase` (which sets `additionalProperties: false`) with an
   `order` member, so no document matches it; the specification's own
-  example fails too. `check_contract.py` validates the completed session
-  without `order` as a `CheckoutSession` and `order` against `Order`.
+  example fails too (upstream issue #277, open on 2026-11-11).
+  `check_contract.py` validates the completed session without `order` as
+  a `CheckoutSession` and `order` against `Order`.
+- Reusing an idempotency key with different parameters gets 400 here, as
+  payment providers answer it; the IETF Idempotency-Key draft (and
+  Chapter 3's API) use 422. A request arriving while the first still runs
+  gets 409 in both.
+- The x402 facilitator refuses a reused nonce in verify; on a real network
+  the token contract refuses it at settlement, which a facilitator reports
+  as `invalid_transaction_state`.
+- Retry a payment with the same key only within the provider's key
+  retention (Stripe: at least 24 hours); after that, look the payment up
+  by the order ID in its metadata first.
 - The provider is not Stripe or any real provider; its shape follows the
   common developer-payment-API pattern so the chapter's points (tokens,
   idempotency keys, webhooks) run offline. A real integration uses the
