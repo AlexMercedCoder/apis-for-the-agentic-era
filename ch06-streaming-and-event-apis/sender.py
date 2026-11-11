@@ -12,10 +12,21 @@ A 410 Gone stops delivery for good.
 --repeat sends the identical signed request a second time (a replay).
 --secret signs with another key (a forgery). --timestamp-offset shifts
 the timestamp (a stale replay). --once makes a single attempt.
+
+Before any attempt the sender checks the target, because a subscriber can
+register any URL: it must be https, and every address the host resolves
+to must be public (no loopback, private, link-local, or metadata ranges).
+--allow-local-http permits http://127.0.0.1 for this demo only. The check
+runs again at send time, since DNS can change after registration, and
+httpx does not follow redirects, so a 3xx counts as a failure. A
+production sender also routes deliveries through an egress proxy that
+enforces the same rule. Retry-After is not honored in this demo.
 """
 
 import argparse
+import ipaddress
 import json
+import socket
 import time
 import uuid
 from datetime import datetime, timezone
@@ -27,6 +38,25 @@ from webhooks import SECRET, sign
 
 URL = "http://127.0.0.1:8061/hooks/harbor"
 SCHEDULE = [0, 1, 2, 4]
+
+
+class UnsafeTarget(Exception):
+    pass
+
+
+def check_target(url: str, allow_local_http: bool) -> None:
+    parsed = httpx.URL(url)
+    local = allow_local_http and parsed.host == "127.0.0.1"
+    if parsed.scheme != "https" and not local:
+        raise UnsafeTarget(f"{parsed.scheme}:// is not https")
+    infos = socket.getaddrinfo(parsed.host, parsed.port or 443)
+    for info in infos:
+        addr = ipaddress.ip_address(info[4][0])
+        if local and addr.is_loopback:
+            continue
+        if not addr.is_global:
+            raise UnsafeTarget(f"{parsed.host} resolves to {addr}, "
+                               "which is not a public address")
 
 
 def build(secret: str, msg_id: str, body: bytes, offset: int) -> dict:
@@ -56,6 +86,7 @@ def main() -> None:
     p.add_argument("--secret", default=SECRET)
     p.add_argument("--timestamp-offset", type=int, default=0)
     p.add_argument("--once", action="store_true")
+    p.add_argument("--allow-local-http", action="store_true")
     args = p.parse_args()
 
     shipped_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -68,6 +99,11 @@ def main() -> None:
     with httpx.Client(timeout=15) as client:
         for attempt, delay in enumerate(schedule, 1):
             time.sleep(delay)
+            try:
+                check_target(args.url, args.allow_local_http)
+            except UnsafeTarget as e:
+                print(f"refused {args.url}: {e}")
+                return
             headers = build(args.secret, msg_id, body,
                             args.timestamp_offset)
             if args.dump and attempt == 1:

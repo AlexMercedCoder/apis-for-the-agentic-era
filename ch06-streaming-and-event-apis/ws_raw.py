@@ -72,12 +72,15 @@ def recv(sock: socket.socket) -> tuple[int, bytes]:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--port", type=int, default=8006)
-    port = p.parse_args().port
+    p.add_argument("--origin")
+    args = p.parse_args()
+    port = args.port
+    origin = f"Origin: {args.origin}\r\n" if args.origin else ""
     sock = socket.create_connection(("127.0.0.1", port))
     request = (f"GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n"
                "Upgrade: websocket\r\nConnection: Upgrade\r\n"
                f"Sec-WebSocket-Key: {KEY}\r\n"
-               "Sec-WebSocket-Version: 13\r\n\r\n")
+               f"Sec-WebSocket-Version: 13\r\n{origin}\r\n")
     sock.sendall(request.encode())
     print(request.replace("\r\n", "\n"), end="")
     response = b""
@@ -86,6 +89,9 @@ def main() -> None:
     for line in response.decode().split("\r\n"):
         if not line.lower().startswith("date:"):
             print(line)
+    if " 101 " not in response.split(b"\r\n")[0].decode():
+        sock.close()
+        return
     accept = base64.b64encode(
         hashlib.sha1((KEY + GUID).encode()).digest()).decode()
     print(f"expected Sec-WebSocket-Accept: {accept}\n")

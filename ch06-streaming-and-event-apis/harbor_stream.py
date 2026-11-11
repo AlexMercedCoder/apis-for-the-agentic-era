@@ -6,6 +6,13 @@ GET /orders/{order_id}/events   text/event-stream, honors Last-Event-ID
 GET /ws                         WebSocket; send {"type": "watch",
                                 "order_id": "ord-5003"} to subscribe
 
+Like the earlier Harbor demos, this server has no authentication: anyone
+who can reach it can watch any order. A real stream authenticates the
+caller as any other request does and checks that the caller may see the
+order. The WebSocket route does check Origin, because a browser sends
+cookies on a cross-site upgrade: a request with an Origin outside
+ALLOWED_ORIGINS is refused with 403 before the upgrade.
+
 The first watcher of a paid order starts a stand-in warehouse that ships
 it SHIP_AFTER seconds later, so every client sees order.shipped arrive
 live. Order state lives in memory and starts from ../harbor-data/.
@@ -24,6 +31,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from events import OrderLog
 
+ALLOWED_ORIGINS = {"http://127.0.0.1:8006", "http://localhost:8006"}
 SHIP_AFTER = 0.3
 KEEPALIVE = 15
 orders = OrderLog()
@@ -64,10 +72,15 @@ async def events(request: Request):
             yield sse(eid, kind, data)
 
     return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"cache-control": "no-cache"})
+                             headers={"cache-control": "no-cache",
+                                      "x-accel-buffering": "no"})
 
 
 async def ws(socket: WebSocket) -> None:
+    origin = socket.headers.get("origin")
+    if origin is not None and origin not in ALLOWED_ORIGINS:
+        await socket.close(code=1008)
+        return
     await socket.accept()
     try:
         msg = await socket.receive_json()

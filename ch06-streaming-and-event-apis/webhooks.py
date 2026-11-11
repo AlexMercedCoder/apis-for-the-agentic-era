@@ -3,7 +3,8 @@
 The sender signs "<webhook-id>.<webhook-timestamp>.<body>" with HMAC-SHA256
 and a shared secret, and sends the result as "v1,<base64>" in the
 webhook-signature header. The receiver recomputes it, compares in constant
-time, and refuses a timestamp outside its tolerance.
+time, and refuses a timestamp outside its tolerance. Values are compared
+as bytes, so a non-ASCII header is a failed match, not a crash.
 
 SECRET is a placeholder for this demo, not a real key. A real secret is
 random (24 to 64 bytes), generated per subscription, and kept out of Git.
@@ -40,7 +41,7 @@ def verify(secret: str, headers, body: bytes, now=None) -> str:
     signatures = headers.get("webhook-signature")
     if not (msg_id and timestamp and signatures):
         raise InvalidWebhook("missing webhook headers")
-    if not timestamp.isdigit():
+    if not (timestamp.isascii() and timestamp.isdigit()):
         raise InvalidWebhook("webhook-timestamp is not a number")
     now = int(time.time()) if now is None else now
     if abs(now - int(timestamp)) > TOLERANCE_SECONDS:
@@ -48,6 +49,7 @@ def verify(secret: str, headers, body: bytes, now=None) -> str:
     expected = sign(secret, msg_id, timestamp, body).partition(",")[2]
     for candidate in signatures.split():
         version, _, value = candidate.partition(",")
-        if version == "v1" and hmac.compare_digest(value, expected):
+        if version == "v1" and hmac.compare_digest(
+                value.encode(), expected.encode()):
             return msg_id
     raise InvalidWebhook("no signature matches")

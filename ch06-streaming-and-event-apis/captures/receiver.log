@@ -1,5 +1,5 @@
-503 msg_ad47dbc21dcc4784912327b5 (receiver busy, stand-in)
-204 msg_ad47dbc21dcc4784912327b5 processed order.shipped ord-5003
-204 msg_ad47dbc21dcc4784912327b5 duplicate, already processed
+503 msg_69d7eef8e09149ceb946bfe4 (receiver busy, stand-in)
+204 msg_69d7eef8e09149ceb946bfe4 processed order.shipped ord-5003
+204 msg_69d7eef8e09149ceb946bfe4 duplicate, already processed
 401 rejected: no signature matches
 401 rejected: timestamp over 300 seconds from now

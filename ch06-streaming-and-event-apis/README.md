@@ -34,11 +34,11 @@ leaves `127.0.0.1` after `uv sync` and `npm ci`.
 |---|---|
 | `webhooks.py` | `sign()` and `verify()` per Standard Webhooks 1.0.0: HMAC-SHA256 over `id.timestamp.body`, `v1,` signatures, constant-time compare, 300-second timestamp tolerance |
 | `receiver.py` | a subscriber's receiver, `POST /hooks/harbor` on `127.0.0.1:8061`; 401 for a bad signature or stale timestamp, 204 for a processed or duplicate delivery; `--fail-first N` answers 503 to the first N genuine deliveries |
-| `sender.py` | Harbor's sender: delivers `order.shipped` for `ord-5003`, retries with the same `webhook-id` after 1, 2, and 4 seconds (a stand-in for a schedule of minutes and hours); `--dump`, `--repeat` (replay), `--secret` (forgery), `--timestamp-offset` (stale), `--once` |
+| `sender.py` | Harbor's sender: delivers `order.shipped` for `ord-5003`, retries with the same `webhook-id` after 1, 2, and 4 seconds (a stand-in for a schedule of minutes and hours); refuses any target that isn't `https` or resolves to a non-public address (checked before every attempt; `--allow-local-http` permits `http://127.0.0.1` for the demo), never follows redirects, and ignores `Retry-After` (a production sender honors it and sends through an egress proxy); `--dump`, `--repeat` (replay), `--secret` (forgery), `--timestamp-offset` (stale), `--once` |
 | `events.py` | the event data shared by every style, and a per-order event log with ids from 1 |
-| `harbor_stream.py` | `GET /orders/{order_id}/events` (SSE, honors `Last-Event-ID`) and `/ws` (WebSocket) on `127.0.0.1:8006`; a stand-in warehouse ships a paid order 0.3 s after the first watcher |
+| `harbor_stream.py` | `GET /orders/{order_id}/events` (SSE, honors `Last-Event-ID`, sends `X-Accel-Buffering: no`) and `/ws` (WebSocket; an upgrade whose `Origin` isn't Harbor's own gets 403) on `127.0.0.1:8006`; a stand-in warehouse ships a paid order 0.3 s after the first watcher. No authentication: a real stream authenticates the caller and checks it may see the order |
 | `sse_client.py` | reads the SSE stream line by line, stops after a given id, sends `Last-Event-ID` with `--last-event-id` |
-| `ws_raw.py` | a WebSocket client on a bare socket that prints the upgrade and every frame's header bits |
+| `ws_raw.py` | a WebSocket client on a bare socket that prints the upgrade and every frame's header bits; `--origin` sends an `Origin` header |
 | `asyncapi.yaml` | the AsyncAPI 3.1.0 document for `order.shipped` |
 | `check_contract.py` | validates a captured delivery's headers and body against `asyncapi.yaml` |
 | `validate/validate.mjs` | parses and validates `asyncapi.yaml` with `@asyncapi/parser` |
@@ -65,8 +65,9 @@ close with code 1000.
 
 ```bash
 uv run python receiver.py --fail-first 1     # in one terminal
-uv run python sender.py --repeat             # in another
-uv run python sender.py --once --timestamp-offset -600
+uv run python sender.py --allow-local-http --repeat     # in another
+uv run python sender.py --allow-local-http --once --timestamp-offset -600
+uv run python sender.py --url https://169.254.169.254/latest/meta-data/
 
 uv run python harbor_stream.py               # in one terminal
 uv run python sse_client.py ord-5003 --until 2
@@ -82,4 +83,6 @@ Recorded November 11, 2026. Webhook IDs, timestamps, signatures, and
 as sent, with the JSON body indented (it is sent compact).
 `receiver.log`, `sender.out`, `forged.out`, `stale.out` hold the webhook
 runs; `asyncapi-validate.out` and `contract.out` the contract checks;
-`sse-first.out`, `sse-resume.out`, and `websocket.out` the streams.
+`sse-first.out`, `sse-resume.out`, and `websocket.out` the streams;
+`unsafe-targets.out` the sender refusing three unsafe URLs, and
+`websocket-bad-origin.out` the 403 for a foreign `Origin`.

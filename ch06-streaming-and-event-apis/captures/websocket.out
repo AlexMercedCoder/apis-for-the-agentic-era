@@ -22,7 +22,7 @@ server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=59
     {"id":2,"type":"order.paid","data":{"order_id":"ord-5003"}}
 server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=98
     {"id":3,"type":"order.shipped","data":{"order_id":"ord-5003",
-    "shipped_at":"2026-11-11T06:09:32Z"}}
+    "shipped_at":"2026-11-11T06:22:52Z"}}
 client -> server  FIN=1 opcode=0x8 (close) MASK=1 len=2
     close code 1000
 server -> client  FIN=1 opcode=0x8 (close) MASK=0 len=2

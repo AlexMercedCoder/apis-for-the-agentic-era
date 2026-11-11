@@ -34,14 +34,20 @@ stop() {
 # 1. Webhooks: a delivery that fails once and is retried, then replayed,
 #    a forgery, and a stale replay.
 start 8061 receiver.log uv run python receiver.py --fail-first 1
-uv run python sender.py --dump "$OUT/delivery.http" --repeat \
+uv run python sender.py --allow-local-http --dump "$OUT/delivery.http" --repeat \
   > "$OUT/sender.out"
-uv run python sender.py --once \
+uv run python sender.py --allow-local-http --once \
   --secret "whsec_$(printf 'an-attacker-guessed-this-key' | base64)" \
   > "$OUT/forged.out" || true
-uv run python sender.py --once --timestamp-offset -600 \
+uv run python sender.py --allow-local-http --once --timestamp-offset -600 \
   > "$OUT/stale.out" || true
 stop
+
+# The sender refuses unsafe targets before sending anything.
+{ uv run python sender.py --url https://169.254.169.254/latest/meta-data/
+  uv run python sender.py --url https://127.0.0.1:8061/hooks/harbor
+  uv run python sender.py --url http://hooks.example.com/harbor
+} > "$OUT/unsafe-targets.out"
 
 # 2. The contract: AsyncAPI parses, and the delivery matches it.
 (cd validate && node validate.mjs ../asyncapi.yaml) \
@@ -59,6 +65,8 @@ stop
 # 4. WebSocket: the upgrade and the frames, on a fresh server.
 start 8006 stream-server-ws.log uv run python harbor_stream.py
 uv run python ws_raw.py > "$OUT/websocket.out"
+uv run python ws_raw.py --origin https://evil.example \
+  > "$OUT/websocket-bad-origin.out"
 stop
 
 echo "captures written to $OUT/"

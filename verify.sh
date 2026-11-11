@@ -358,6 +358,24 @@ h = {'webhook-id': 'msg_1', 'webhook-timestamp': '1700000000',
      'webhook-signature': 'v1,bad v1,' + base64.b64encode(mac).decode()}
 assert webhooks.verify(s, h, b'{}', now=1700000100) == 'msg_1'
 \""
+check "ch06: malformed headers fail verification instead of crashing" \
+  bash -c "cd ch06-streaming-and-event-apis && uv run -q python -c \"
+import webhooks
+for h in ({'webhook-id': 'm', 'webhook-timestamp': '²', 'webhook-signature': 'v1,x'},
+          {'webhook-id': 'm', 'webhook-timestamp': '1700000000', 'webhook-signature': 'v1,é'}):
+    try:
+        webhooks.verify(webhooks.SECRET, h, b'{}', now=1700000000)
+    except webhooks.InvalidWebhook:
+        pass
+    else:
+        raise SystemExit('accepted a malformed delivery')
+\""
+check "ch06: sender refuses non-https and non-public webhook targets" \
+  bash -c "grep -qx 'refused https://169.254.169.254/latest/meta-data/: 169.254.169.254 resolves to 169.254.169.254, which is not a public address' '$CH06/unsafe-targets.out' &&
+           grep -q '^refused https://127.0.0.1:8061/hooks/harbor: .*not a public address$' '$CH06/unsafe-targets.out' &&
+           grep -qx 'refused http://hooks.example.com/harbor: http:// is not https' '$CH06/unsafe-targets.out'"
+check "ch06: WebSocket upgrade from a foreign Origin gets 403" \
+  grep -qx 'HTTP/1.1 403 Forbidden' "$CH06/websocket-bad-origin.out"
 check "ch06: AsyncAPI document valid, delivery matches it" \
   bash -c "grep -qx '../asyncapi.yaml: valid AsyncAPI 3.1.0, operations: sendOrderShipped (send on order.shipped)' '$CH06/asyncapi-validate.out' &&
            grep -q 'matches order.shipped in AsyncAPI 3.1.0' '$CH06/contract.out'"
