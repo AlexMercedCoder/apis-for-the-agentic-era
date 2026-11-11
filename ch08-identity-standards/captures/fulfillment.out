@@ -1,0 +1,28 @@
+POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic <client_id:client_secret>
+
+grant_type=client_credentials
+
+HTTP/1.1 200 OK
+cache-control: no-store
+content-type: application/json
+
+{
+  "access_token": "<JWT 821 chars>",
+  "expires_in": 300,
+  "refresh_expires_in": 0,
+  "token_type": "Bearer",
+  "not-before-policy": 0,
+  "scope": "orders:read:all"
+}
+{
+  "aud": "http://127.0.0.1:8008",
+  "sub": "32cd726c-5bac-43da-8f5c-77a23eb6c0a5",
+  "azp": "harbor-fulfillment",
+  "scope": "orders:read:all"
+}
+
+GET /orders/ord-5002: 200 cus-002 shipped
+PUT /orders/ord-5002/cancellation: 403 PUT /orders/ord-5002/cancellation needs orders:write

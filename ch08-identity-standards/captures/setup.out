@@ -1,0 +1,1 @@
+realm harbor: scopes orders:read, orders:write, orders:read:all; clients harbor-storefront, harbor-fulfillment, harbor-assistant; customers rosa, sam

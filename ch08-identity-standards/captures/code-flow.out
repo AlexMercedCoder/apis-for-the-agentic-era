@@ -1,0 +1,60 @@
+== 1. authorization request (the browser is sent here)
+http://127.0.0.1:8080/realms/harbor/protocol/openid-connect/auth
+  ?response_type=code
+  &client_id=harbor-storefront
+  &redirect_uri=http%3A%2F%2F127.0.0.1%3A8090%2Fcallback
+  &scope=openid+orders%3Aread+orders%3Awrite+delegation%3Aclient%3Aharbor-assistant
+  &state=40sdvcAVpmo_Cu7OBSwEfQ
+  &nonce=rOKeIvL9cs1qqjcHZAjLVQ
+  &code_challenge=nRmPqT0mnXCiVUaBhhwAw2ddWbHU0XkILrHBCsUuG4Y
+  &code_challenge_method=S256
+
+== 2. redirect back to the storefront
+http://127.0.0.1:8090/callback?state=40sdvcAVpmo_Cu7OBSwEfQ&session_state=7QChW4-tjAZnOjMkw9agIFXc&iss=http://127.0.0.1:8080/realms/harbor&code=<98 chars>
+
+== 3. a token request with the wrong code verifier
+POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&
+code=<98 chars>&
+redirect_uri=http://127.0.0.1:8090/callback&
+client_id=harbor-storefront&
+code_verifier=<43 chars>
+
+HTTP/1.1 400 Bad Request
+cache-control: no-store
+content-type: application/json
+
+{
+  "error": "invalid_grant",
+  "error_description": "PKCE verification failed: Code mismatch"
+}
+
+== 4. the token request with the right verifier
+POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&
+code=<98 chars>&
+redirect_uri=http://127.0.0.1:8090/callback&
+client_id=harbor-storefront&
+code_verifier=<43 chars>
+
+HTTP/1.1 200 OK
+cache-control: no-store
+content-type: application/json
+
+{
+  "access_token": "<JWT 1275 chars>",
+  "expires_in": 300,
+  "refresh_expires_in": 1800,
+  "refresh_token": "<JWT 856 chars>",
+  "token_type": "Bearer",
+  "id_token": "<JWT 1173 chars>",
+  "not-before-policy": 0,
+  "session_state": "WrLyx6dDhbM0BPFXas4wpXqf",
+  "scope": "openid orders:read orders:write delegation:client:harbor-assistant profile"
+}

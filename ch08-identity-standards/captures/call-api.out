@@ -1,0 +1,92 @@
+== decoded access token (header, then payload)
+{"alg": "RS256", "typ": "JWT", "kid": "9ual9HO0LG4gTAseIcsDk4e0CSsJy52KMsWgwdEwu48"}
+{
+  "exp": 1794385798,
+  "iat": 1794385498,
+  "auth_time": 1794385497,
+  "jti": "onrtac:5ca955bd-7fe7-3c8a-8f53-32e738d1acad",
+  "iss": "http://127.0.0.1:8080/realms/harbor",
+  "aud": [
+    "http://127.0.0.1:8008",
+    "harbor-assistant"
+  ],
+  "sub": "3a03a554-5de5-45c1-bcdf-efb8db42e379",
+  "typ": "Bearer",
+  "azp": "harbor-storefront",
+  "sid": "WrLyx6dDhbM0BPFXas4wpXqf",
+  "scope": "openid orders:read orders:write delegation:client:harbor-assistant profile",
+  "name": "Rosa Delgado",
+  "preferred_username": "rosa",
+  "may_act": {
+    "sub": "d98a6b6d-6ab0-4d09-849b-943a2baf80b9",
+    "client_id": "harbor-assistant"
+  },
+  "customer_id": "cus-001",
+  "given_name": "Rosa",
+  "family_name": "Delgado"
+}
+
+== no token
+GET /orders/ord-5003 HTTP/1.1
+Host: 127.0.0.1:8008
+
+HTTP/1.1 401 Unauthorized
+content-type: application/problem+json
+www-authenticate: Bearer resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", scope="orders:read"
+
+{
+  "type": "https://harbor.example/problems/unauthorized",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "no access token"
+}
+
+== Rosa's access token, her own order
+200 ord-5003 paid customer cus-001
+
+== tokens that must fail
+ID token as access token     401  Audience doesn't match
+                                  Bearer resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="invalid_token"
+alg none, no signature       401  Unable to find a signing key that matches: "None"
+                                  Bearer resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="invalid_token"
+payload edited               401  Signature verification failed
+                                  Bearer resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="invalid_token"
+
+== Sam's order with Rosa's token
+GET /orders/ord-5002 HTTP/1.1
+Host: 127.0.0.1:8008
+Authorization: Bearer <JWT 1275 chars>
+
+HTTP/1.1 404 Not Found
+content-type: application/problem+json
+
+{
+  "type": "https://harbor.example/problems/order-not-found",
+  "title": "Order not found",
+  "status": 404,
+  "detail": "No order with id ord-5002.",
+  "instance": "/orders/ord-5002"
+}
+
+== an order for another customer
+customer_id cus-002          403  customer_id is not the token's customer
+
+== the same order for Rosa herself
+201 /orders/ord-5005
+
+== a token with orders:read only tries to cancel
+PUT /orders/ord-5003/cancellation HTTP/1.1
+Host: 127.0.0.1:8008
+Authorization: Bearer <JWT 1066 chars>
+Content-Type: application/json
+
+HTTP/1.1 403 Forbidden
+content-type: application/problem+json
+www-authenticate: Bearer resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="insufficient_scope", error_description="PUT /orders/ord-5003/cancellation needs orders:write", scope="orders:write"
+
+{
+  "type": "https://harbor.example/problems/forbidden",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "PUT /orders/ord-5003/cancellation needs orders:write"
+}

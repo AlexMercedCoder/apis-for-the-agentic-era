@@ -1,0 +1,18 @@
+# Chapter 8: a local OpenID provider (Keycloak) on 127.0.0.1 only.
+# start-dev keeps state in memory and serves plain HTTP: fine for this
+# stack, never for production. The admin password is a placeholder.
+name: harbor-ch08
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command:
+      - start-dev
+      - --features=token-exchange-delegation,parameterized-scopes
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: not-a-real-password
+      KC_HOSTNAME: http://127.0.0.1:8080
+      KC_LOG_LEVEL: warn
+    ports:
+      - "127.0.0.1:8080:8080"

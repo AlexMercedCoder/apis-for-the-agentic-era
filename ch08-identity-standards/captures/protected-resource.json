@@ -1,0 +1,17 @@
+{
+  "resource": "http://127.0.0.1:8008",
+  "authorization_servers": [
+    "http://127.0.0.1:8080/realms/harbor"
+  ],
+  "scopes_supported": [
+    "orders:read",
+    "orders:write"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ],
+  "dpop_signing_alg_values_supported": [
+    "ES256"
+  ],
+  "resource_name": "Harbor Books API"
+}

@@ -1,0 +1,16 @@
+"GET /orders/ord-5003 HTTP/1.1" 200 caller=cus-001
+"GET /orders/ord-5003 HTTP/1.1" 401 error=no access token
+"GET /orders/ord-5003 HTTP/1.1" 200 caller=cus-001
+"GET /orders/ord-5003 HTTP/1.1" 401 error=invalid_token
+"GET /orders/ord-5003 HTTP/1.1" 401 error=invalid_token
+"GET /orders/ord-5002 HTTP/1.1" 401 error=invalid_token
+"GET /orders/ord-5002 HTTP/1.1" 404 caller=cus-001 not-owner
+"POST /orders HTTP/1.1" 403 error=customer_id is not the token's customer
+"POST /orders HTTP/1.1" 201 caller=cus-001
+"PUT /orders/ord-5003/cancellation HTTP/1.1" 403 error=insufficient_scope
+"GET /orders/ord-5002 HTTP/1.1" 200 caller=harbor-fulfillment
+"PUT /orders/ord-5002/cancellation HTTP/1.1" 403 error=insufficient_scope
+"GET /orders/ord-5003 HTTP/1.1" 200 caller=cus-001 act=harbor-assistant
+"GET /orders/ord-5003 HTTP/1.1" 401 error=invalid_token
+"GET /orders/ord-5003 HTTP/1.1" 401 error=invalid_dpop_proof
+"PUT /orders/ord-5003/cancellation HTTP/1.1" 403 error=insufficient_scope

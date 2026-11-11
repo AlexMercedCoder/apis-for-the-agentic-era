@@ -1,0 +1,5 @@
+refresh, first use:          200
+refresh, same token again:   400 invalid_grant
+refresh, the newer token:    400 invalid_grant (Session doesn't have required client)
+Harbor, checking the JWT:    200
+introspection of that token: active=False

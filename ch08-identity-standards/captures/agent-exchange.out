@@ -1,0 +1,100 @@
+== 1. the assistant's own token (client credentials)
+POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
+Host: 127.0.0.1:8080
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic <client_id:client_secret>
+
+grant_type=client_credentials
+
+HTTP/1.1 200 OK
+cache-control: no-store
+content-type: application/json
+
+{
+  "access_token": "<JWT 758 chars>",
+  "expires_in": 300,
+  "refresh_expires_in": 0,
+  "token_type": "Bearer",
+  "not-before-policy": 0,
+  "scope": ""
+}
+
+== 2. token exchange: Rosa's token in, a delegated token out
+POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
+Host: 127.0.0.1:8080
+DPoP: <JWT 508 chars>
+Content-Type: application/x-www-form-urlencoded
+Authorization: Basic <client_id:client_secret>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange&
+subject_token=<JWT 1275 chars>&
+subject_token_type=urn:ietf:params:oauth:token-type:access_token&
+actor_token=<JWT 758 chars>&
+actor_token_type=urn:ietf:params:oauth:token-type:access_token&
+scope=orders:read
+
+HTTP/1.1 200 OK
+cache-control: no-store
+content-type: application/json
+
+{
+  "access_token": "<JWT 1062 chars>",
+  "expires_in": 299,
+  "refresh_expires_in": 0,
+  "token_type": "DPoP",
+  "not-before-policy": 0,
+  "scope": "orders:read",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
+}
+{
+  "exp": 1794385798,
+  "iss": "http://127.0.0.1:8080/realms/harbor",
+  "aud": "http://127.0.0.1:8008",
+  "sub": "3a03a554-5de5-45c1-bcdf-efb8db42e379",
+  "azp": "harbor-assistant",
+  "cnf": {
+    "jkt": "p109ih0pbH88_7KuT6kuOA-PwseNdaZ43vOOEd7UbrI",
+    "kc-jkt-type": "DPoP"
+  },
+  "scope": "orders:read",
+  "act": {
+    "sub": "d98a6b6d-6ab0-4d09-849b-943a2baf80b9",
+    "client_id": "harbor-assistant"
+  },
+  "customer_id": "cus-001"
+}
+
+== 3. the assistant reads Rosa's order with a fresh proof
+GET /orders/ord-5003 HTTP/1.1
+Host: 127.0.0.1:8008
+Authorization: DPoP <JWT 1062 chars>
+DPoP: <JWT 539 chars>
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{
+  "id": "ord-5003",
+  "customer_id": "cus-001",
+  "status": "paid",
+
+== 4. a thief with the token but not the key
+GET /orders/ord-5003 HTTP/1.1
+Host: 127.0.0.1:8008
+Authorization: Bearer <JWT 1062 chars>
+
+HTTP/1.1 401 Unauthorized
+content-type: application/problem+json
+www-authenticate: DPoP resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="invalid_token", error_description="DPoP-bound token sent without a DPoP proof", algs="ES256"
+
+{
+  "type": "https://harbor.example/problems/unauthorized",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "DPoP-bound token sent without a DPoP proof"
+}
+
+replayed proof: 401 proof already used
+
+== 5. the delegated token tries to cancel the order
+403 DPoP resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="insufficient_scope", error_description="PUT /orders/ord-5003/cancellation needs orders:write", scope="orders:write", algs="ES256"

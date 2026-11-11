@@ -1,0 +1,14 @@
+[project]
+name = "harbor-ch08"
+version = "0.1.0"
+description = "Chapter 8: Harbor's REST API behind a local OpenID provider (Keycloak), with PKCE, client credentials, JWT validation, DPoP, and token exchange"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.162.0",
+    "uvicorn==0.54.0",
+    "httpx==0.28.1",
+    "pyjwt[crypto]==2.15.1",
+]
+
+[tool.uv]
+package = false
