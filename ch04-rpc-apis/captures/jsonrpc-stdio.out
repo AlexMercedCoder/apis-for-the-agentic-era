@@ -1,0 +1,4 @@
+{"jsonrpc":"2.0","result":{"order_id":"ord-5005","customer_id":"cus-001","status":"placed","placed_at":"2026-11-11T04:44:45Z","lines":[{"book_id":"bk-1002","quantity":1,"unit_price_cents":1199},{"book_id":"bk-1008","quantity":2,"unit_price_cents":1299}],"total_cents":3797,"currency":"USD"},"id":1}
+{"jsonrpc":"2.0","result":{"order_id":"ord-5005","status":"placed"},"id":2}
+{"jsonrpc":"2.0","method":"orderStatusChanged","params":{"order_id":"ord-5005","status":"paid"}}
+{"jsonrpc":"2.0","method":"orderStatusChanged","params":{"order_id":"ord-5005","status":"shipped"}}

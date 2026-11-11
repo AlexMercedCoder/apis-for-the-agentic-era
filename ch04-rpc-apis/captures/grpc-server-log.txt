@@ -1,0 +1,9 @@
+harbor gRPC on 127.0.0.1:8041
+GetOrderStatus OK ord-5002
+GetOrderStatus NOT_FOUND
+PlaceOrder DEADLINE_EXCEEDED order not created
+PlaceOrder OK new ord-5005
+PlaceOrder OK replay ord-5005
+WatchOrder OK ord-5005
+PlaceOrder DEADLINE_EXCEEDED order not created
+PlaceOrder OK new ord-5006

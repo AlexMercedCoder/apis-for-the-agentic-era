@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs every example in this repository that needs no network access
 # beyond 127.0.0.1 and no API keys, and checks the output the book prints.
-# Usage: ./verify.sh    (needs bash, curl, and uv)
+# Usage: ./verify.sh    (needs bash, curl, uv; Chapter 4 also needs
+# Node 24 and grpcurl 1.9.4)
 set -uo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
@@ -195,6 +196,76 @@ bad = chr(34) + 'a' * 16 + chr(34)
 r = c.post('/orders', json=body, headers={'Idempotency-Key': bad})
 assert r.status_code == 400, r.status_code
 \""
+
+# --- Chapter 4 ---------------------------------------------------------
+CH04="$TMP/ch04"
+check "ch04: run.sh completes" env OUT="$CH04" ch04-rpc-apis/run.sh
+check "ch04: reflection describes OrderService and its NO_SIDE_EFFECTS reads" \
+  bash -c "grep -qx 'harbor.orders.v1.OrderService' '$CH04/grpcurl-list.out' &&
+           [ \$(grep -c 'option idempotency_level = NO_SIDE_EFFECTS;' '$CH04/grpcurl-describe.out') -eq 2 ]"
+check "ch04: gRPC GetOrderStatus and NOT_FOUND with a hint" \
+  bash -c "grep -q '\"status\": \"ORDER_STATUS_SHIPPED\"' '$CH04/grpcurl-get-status.out' &&
+           grep -q 'Code: NotFound' '$CH04/grpcurl-not-found.out' &&
+           grep -q 'Order IDs run from ord-5001 to ord-5004.' '$CH04/grpcurl-not-found.out'"
+check "ch04: a missed deadline creates no order; the retry does, once" \
+  bash -c "grep -q 'Code: DeadlineExceeded' '$CH04/grpcurl-deadline.out' &&
+           [ \$(grep -c 'PlaceOrder DEADLINE_EXCEEDED order not created' '$CH04/grpc-server-log.txt') -eq 2 ] &&
+           grep -qx 'PlaceOrder OK new ord-5005' '$CH04/grpc-server-log.txt' &&
+           grep -qx 'PlaceOrder OK replay ord-5005' '$CH04/grpc-server-log.txt' &&
+           cmp -s '$CH04/grpcurl-place-order.out' '$CH04/grpcurl-place-order-retry.out'"
+check "ch04: generated client prints the deadline error, then the order" \
+  bash -c "grep -qx 'DEADLINE_EXCEEDED after 0.1s: Deadline Exceeded' '$CH04/client.out' &&
+           grep -qx 'ord-5006: ORDER_STATUS_PLACED, 3797 cents' '$CH04/client.out'"
+check "ch04: WatchOrder streams placed, paid, shipped" \
+  bash -c "[ \"\$(grep -o 'ORDER_STATUS_[A-Z]*' '$CH04/grpcurl-watch.out' | tr '\n' ' ')\" = 'ORDER_STATUS_PLACED ORDER_STATUS_PAID ORDER_STATUS_SHIPPED ' ]"
+check "ch04: JSON-RPC result, -32602, -32700, and a batch of two" \
+  bash -c "grep -q '\"result\":{\"order_id\":\"ord-5005\"' '$CH04/jsonrpc-place-order.out' &&
+           grep -q '\"code\":-32602' '$CH04/jsonrpc-bad-params.out' &&
+           grep -q '\"code\":-32700,\"message\":\"Parse error\"},\"id\":null' '$CH04/jsonrpc-parse-error.out' &&
+           head -1 '$CH04/jsonrpc-batch.out' | python3 -c 'import json,sys; r=json.load(sys.stdin); assert [x[\"id\"] for x in r]==[\"a\",\"b\"] and r[1][\"error\"][\"code\"]==-32601'"
+check "ch04: a placeOrder notification gets 204 and still places an order" \
+  bash -c "[ \"\$(tr -d '\n' < '$CH04/jsonrpc-notification.out')\" = 204 ] &&
+           grep -qx 'http placeOrder notification ok new ord-5006' '$CH04/jsonrpc-server-log.txt'"
+check "ch04: stdio carries server notifications after the response" \
+  bash -c "grep -q '\"method\":\"orderStatusChanged\",\"params\":{\"order_id\":\"ord-5005\",\"status\":\"paid\"}' '$CH04/jsonrpc-stdio.out' &&
+           grep -q '\"status\":\"shipped\"' '$CH04/jsonrpc-stdio.out'"
+check "ch04: handle() follows the spec for notification-only and empty batches" \
+  bash -c "cd ch04-rpc-apis && uv run -q python -c \"
+import json, harbor_jsonrpc as j
+T = j.HttpTransport
+n = {'jsonrpc': '2.0', 'method': 'getOrderStatus',
+     'params': {'order_id': 'ord-5002'}}
+assert j.handle(json.dumps([n, n]), T) is None
+assert json.loads(j.handle('[]', T))['error']['code'] == -32600
+assert json.loads(j.handle(json.dumps({'jsonrpc': '2.0', 'method': 'x',
+                                        'id': 7}), T))['id'] == 7
+\""
+check "ch04: tRPC client, 404 without a stack, and the type checks" \
+  bash -c "grep -qx 'ord-5005 placed 3797' '$CH04/trpc-client.out' &&
+           grep -q '\"code\":-32004' '$CH04/trpc-not-found.out' &&
+           ! grep -q stack '$CH04/trpc-not-found.out' &&
+           [ ! -s '$CH04/trpc-typecheck.out' ] &&
+           grep -q 'error TS2322' '$CH04/trpc-typecheck-bad.out' &&
+           grep -q 'error TS2561' '$CH04/trpc-typecheck-bad.out'"
+check "ch04: payload sizes match the chapter's table" \
+  python3 - "$CH04/payload-sizes.json" <<'PY'
+import json, sys
+rows = {(r["call"], r["style"]): r
+        for r in json.load(open(sys.argv[1]))["rows"]}
+want = {("GetOrderStatus", "SOAP"): (740, 466, 1520),
+        ("GetOrderStatus", "REST"): (0, 388, 577),
+        ("GetOrderStatus", "gRPC"): (10, 28, 121),
+        ("GetOrderStatus", "JSON-RPC"): (83, 147, 469),
+        ("GetOrderStatus", "tRPC"): (0, 133, 432),
+        ("PlaceOrder", "REST"): (134, 461, 919),
+        ("PlaceOrder", "gRPC"): (73, 69, 225),
+        ("PlaceOrder", "JSON-RPC"): (213, 298, 751),
+        ("PlaceOrder", "tRPC"): (157, 284, 747)}
+for key, (req, resp, wire) in want.items():
+    r = rows[key]
+    got = (r["request_message"], r["response_message"], r["wire_median"])
+    assert got == (req, resp, wire), (key, got)
+PY
 
 echo
 echo "$PASS passed, $FAIL failed"

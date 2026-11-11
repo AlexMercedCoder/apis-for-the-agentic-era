@@ -1,0 +1,7 @@
+{
+  "order_id": "ord-5002",
+  "status": "ORDER_STATUS_SHIPPED",
+  "placed_at": "2026-11-03T09:41:52Z",
+  "total_cents": 4897,
+  "currency": "USD"
+}

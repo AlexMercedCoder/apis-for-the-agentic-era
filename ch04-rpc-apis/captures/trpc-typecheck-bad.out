@@ -1,0 +1,2 @@
+bad-client.ts(10,33): error TS2322: Type 'string' is not assignable to type 'number'.
+bad-client.ts(14,37): error TS2561: Object literal may only specify known properties, but 'orderId' does not exist in type '{ order_id: string; }'. Did you mean to write 'order_id'?

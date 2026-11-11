@@ -1,0 +1,8 @@
+[
+  {"jsonrpc": "2.0", "method": "getOrderStatus",
+   "params": {"order_id": "ord-5001"}, "id": "a"},
+  {"jsonrpc": "2.0", "method": "cancelOrder",
+   "params": {"order_id": "ord-5003"}, "id": "b"},
+  {"jsonrpc": "2.0", "method": "getOrderStatus",
+   "params": {"order_id": "ord-5003"}}
+]

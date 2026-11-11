@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package harbor.orders.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Harbor's order service. PlaceOrder changes data; the others read.
+service OrderService {
+  // Buy one or more books. A retry with the same request_id returns
+  // the first order instead of placing a second one.
+  rpc PlaceOrder(PlaceOrderRequest) returns (Order);
+  // Report where one order is.
+  rpc GetOrderStatus(GetOrderStatusRequest)
+      returns (OrderStatusReply) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Stream each status change of one order until it ships.
+  rpc WatchOrder(GetOrderStatusRequest)
+      returns (stream OrderStatusReply) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PLACED = 1;
+  ORDER_STATUS_PAID = 2;
+  ORDER_STATUS_SHIPPED = 3;
+  ORDER_STATUS_DELIVERED = 4;
+  ORDER_STATUS_CANCELLED = 5;
+}
+
+message LineItem {
+  string book_id = 1;   // such as bk-1001
+  int32 quantity = 2;   // 1 to 10
+}
+
+message PlaceOrderRequest {
+  string customer_id = 1;        // such as cus-001
+  repeated LineItem lines = 2;   // 1 to 20
+  string request_id = 3;         // a new UUID per order
+}
+
+message OrderLine {
+  string book_id = 1;
+  int32 quantity = 2;
+  int32 unit_price_cents = 3;
+}
+
+message Order {
+  string order_id = 1;
+  string customer_id = 2;
+  OrderStatus status = 3;
+  google.protobuf.Timestamp placed_at = 4;
+  repeated OrderLine lines = 5;
+  int32 total_cents = 6;
+  string currency = 7;
+}
+
+message GetOrderStatusRequest {
+  string order_id = 1;   // such as ord-5002
+}
+
+message OrderStatusReply {
+  string order_id = 1;
+  OrderStatus status = 2;
+  google.protobuf.Timestamp placed_at = 3;
+  int32 total_cents = 4;
+  string currency = 5;
+}

@@ -1,0 +1,95 @@
+{
+  "runs": 20,
+  "rows": [
+    {
+      "call": "GetOrderStatus",
+      "style": "SOAP",
+      "request_message": 740,
+      "response_message": 466,
+      "response_compact": null,
+      "wire_median": 1520.0,
+      "wire_min": 1520,
+      "wire_max": 1520
+    },
+    {
+      "call": "GetOrderStatus",
+      "style": "REST",
+      "request_message": 0,
+      "response_message": 388,
+      "response_compact": 319,
+      "wire_median": 577.0,
+      "wire_min": 577,
+      "wire_max": 577
+    },
+    {
+      "call": "GetOrderStatus",
+      "style": "gRPC",
+      "request_message": 10,
+      "response_message": 28,
+      "response_compact": null,
+      "wire_median": 121.0,
+      "wire_min": 121,
+      "wire_max": 140
+    },
+    {
+      "call": "GetOrderStatus",
+      "style": "JSON-RPC",
+      "request_message": 83,
+      "response_message": 147,
+      "response_compact": 147,
+      "wire_median": 469.0,
+      "wire_min": 469,
+      "wire_max": 469
+    },
+    {
+      "call": "GetOrderStatus",
+      "style": "tRPC",
+      "request_message": 0,
+      "response_message": 133,
+      "response_compact": 133,
+      "wire_median": 432.0,
+      "wire_min": 432,
+      "wire_max": 432
+    },
+    {
+      "call": "PlaceOrder",
+      "style": "REST",
+      "request_message": 134,
+      "response_message": 461,
+      "response_compact": 383,
+      "wire_median": 919.0,
+      "wire_min": 919,
+      "wire_max": 919
+    },
+    {
+      "call": "PlaceOrder",
+      "style": "gRPC",
+      "request_message": 73,
+      "response_message": 69,
+      "response_compact": null,
+      "wire_median": 225.0,
+      "wire_min": 225,
+      "wire_max": 273
+    },
+    {
+      "call": "PlaceOrder",
+      "style": "JSON-RPC",
+      "request_message": 213,
+      "response_message": 298,
+      "response_compact": 298,
+      "wire_median": 751.0,
+      "wire_min": 751,
+      "wire_max": 751
+    },
+    {
+      "call": "PlaceOrder",
+      "style": "tRPC",
+      "request_message": 157,
+      "response_message": 284,
+      "response_compact": 284,
+      "wire_median": 747.0,
+      "wire_min": 747,
+      "wire_max": 747
+    }
+  ]
+}

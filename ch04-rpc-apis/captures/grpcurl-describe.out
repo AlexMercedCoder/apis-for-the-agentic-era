@@ -1,0 +1,10 @@
+harbor.orders.v1.OrderService is a service:
+service OrderService {
+  rpc GetOrderStatus ( .harbor.orders.v1.GetOrderStatusRequest ) returns ( .harbor.orders.v1.OrderStatusReply ) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc PlaceOrder ( .harbor.orders.v1.PlaceOrderRequest ) returns ( .harbor.orders.v1.Order );
+  rpc WatchOrder ( .harbor.orders.v1.GetOrderStatusRequest ) returns ( stream .harbor.orders.v1.OrderStatusReply ) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

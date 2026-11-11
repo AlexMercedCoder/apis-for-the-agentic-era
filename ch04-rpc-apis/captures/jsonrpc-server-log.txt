@@ -1,0 +1,10 @@
+harbor JSON-RPC on http://127.0.0.1:8042/rpc
+http placeOrder id=1 ok new ord-5005
+http getOrderStatus id=2 ok
+http getOrderStatus id=3 error 1001
+http getOrderStatus id=4 error -32602
+http - parse error
+http getOrderStatus id=a ok
+http cancelOrder id=b error -32601
+http getOrderStatus notification ok
+http placeOrder notification ok new ord-5006

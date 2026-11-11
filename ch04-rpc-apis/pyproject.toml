@@ -1,0 +1,16 @@
+[project]
+name = "harbor-ch04"
+version = "0.1.0"
+description = "Chapter 4: Harbor Books PlaceOrder over gRPC, JSON-RPC 2.0, and tRPC, and a payload comparison"
+requires-python = ">=3.13"
+dependencies = [
+    "grpcio==1.85.1",
+    "grpcio-tools==1.85.1",
+    "grpcio-reflection==1.85.1",
+    "protobuf==7.36.2",
+    "hyperframe==6.1.0",
+    "hpack==4.2.0",
+]
+
+[tool.uv]
+package = false

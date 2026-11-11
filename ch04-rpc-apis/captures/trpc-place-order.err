@@ -1,0 +1,21 @@
+*   Trying 127.0.0.1:8043...
+* Connected to 127.0.0.1 (127.0.0.1) port 8043 (#0)
+> POST /placeOrder HTTP/1.1
+> Host: 127.0.0.1:8043
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 183
+> 
+} [183 bytes data]
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< content-type: application/json
+< vary: trpc-accept, accept
+< Date: Wed, 11 Nov 2026 04:44:46 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [296 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

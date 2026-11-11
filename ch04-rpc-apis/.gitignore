@@ -1,0 +1,3 @@
+gen/
+trpc/node_modules/
+__pycache__/

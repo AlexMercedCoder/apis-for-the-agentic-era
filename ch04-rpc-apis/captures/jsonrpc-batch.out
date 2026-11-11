@@ -1,0 +1,2 @@
+[{"jsonrpc":"2.0","result":{"order_id":"ord-5001","status":"delivered","placed_at":"2026-10-28T14:02:11Z","total_cents":1499,"currency":"USD"},"id":"a"},{"jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found"},"id":"b"}]
+200

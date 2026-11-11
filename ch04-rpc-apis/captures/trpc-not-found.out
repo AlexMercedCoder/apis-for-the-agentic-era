@@ -1,0 +1,2 @@
+{"error":{"message":"No order with id ord-9999. Order IDs run from ord-5001 to ord-5005.","code":-32004,"data":{"code":"NOT_FOUND","httpStatus":404,"path":"getOrderStatus"}}}
+404

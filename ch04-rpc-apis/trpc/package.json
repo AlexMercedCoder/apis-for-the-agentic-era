@@ -1,0 +1,22 @@
+{
+  "name": "harbor-ch04-trpc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chapter 4: Harbor's PlaceOrder as a tRPC procedure",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "server": "node server.ts",
+    "client": "node client.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@trpc/client": "11.19.0",
+    "@trpc/server": "11.19.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
+  }
+}

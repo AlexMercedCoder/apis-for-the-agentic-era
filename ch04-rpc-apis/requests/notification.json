@@ -1,0 +1,9 @@
+{
+  "jsonrpc": "2.0",
+  "method": "placeOrder",
+  "params": {
+    "customer_id": "cus-003",
+    "lines": [{"book_id": "bk-1001", "quantity": 1}],
+    "request_id": "0b7e4c1d-5a2f-4c3e-9d8b-7a6f5e4d3c2b"
+  }
+}

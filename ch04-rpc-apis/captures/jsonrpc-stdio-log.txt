@@ -1,0 +1,2 @@
+stdio placeOrder id=1 ok new ord-5005
+stdio watchOrder id=2 ok
