@@ -20,8 +20,10 @@
 10. prompts/get where_is_my_order: The customer asks where order ord-5003 is. Call get_order_st...
 11. place_order with that token: 403
    www-authenticate: Bearer error="insufficient_scope", scope="orders:read orders:write", resource_metadata="http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp"
+   same call with Mcp-Name base64-encoded: 403
    same call labeled get_book in Mcp-Name: 400 -32020 mcp-name header does not match the request body's 'name' parameter
 12. rosa approved 'orders:read orders:write': token <JWT 947 chars>, scope 'orders:write orders:read'
-13. place_order, which asks Rosa first:
+13. place_order with book_id 'bk-1001\n': is_error=True Invalid arguments: 'bk-1001\n' does not match '^bk-[0-9]{4}$'
+14. place_order, which asks Rosa first:
    form shown to Rosa: Order 1 x Treasure Island for 1899 cents?
    ord-5005 for cus-001: placed, 1899 cents

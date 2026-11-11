@@ -38,6 +38,7 @@ from mcp.server.auth.routes import create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.lowlevel import Server
 from mcp.shared.exceptions import MCPError
+from mcp.shared.inbound import decode_header_value
 from urllib.parse import quote
 
 ISSUER = "http://127.0.0.1:8080/realms/harbor"
@@ -126,6 +127,27 @@ def build_tools():
 
 TOOLS, ROUTES = build_tools()
 SCHEMAS = {tool.name: tool.input_schema for tool in TOOLS}
+
+
+def _strict_pattern(validator, pattern, instance, schema):
+    r"""JSON Schema `pattern` with ECMA-262's `$`: end of string, nothing after.
+
+    jsonschema checks `pattern` with Python's re.search, where `$` also
+    matches just before a trailing newline, so "bk-1001\n" would pass
+    ^bk-[0-9]{4}$. (Chapter 1's agent.py met the same trap and uses
+    fullmatch.) Here a final `$` becomes `\Z`.
+    """
+    if not validator.is_type(instance, "string"):
+        return
+    strict = pattern[:-1] + r"\Z" if pattern.endswith("$") \
+        and not pattern.endswith(r"\$") else pattern
+    if not re.search(strict, instance):
+        yield jsonschema.ValidationError(
+            f"{instance!r} does not match {pattern!r}")
+
+
+StrictValidator = jsonschema.validators.extend(
+    jsonschema.Draft202012Validator, {"pattern": _strict_pattern})
 
 
 # -- tokens ------------------------------------------------------------------
@@ -243,7 +265,8 @@ async def summarize(name, args, customer):
         return f"Cancel {args['order_id']} and refund it?"
     total, titles = 0, []
     for line in args["lines"]:
-        book = (await rest("GET", f"/books/{line['book_id']}")).json()
+        book = (await rest("GET",
+                           f"/books/{quote(line['book_id'], safe='')}")).json()
         total += book.get("price_cents", 0) * line["quantity"]
         titles.append(f"{line['quantity']} x {book.get('title', '?')}")
     return f"Order {', '.join(titles)} for {total} cents?"
@@ -254,6 +277,15 @@ async def list_tools(ctx, params):
 
 
 async def call_tool(ctx, params):
+    try:
+        return await _call_tool(ctx, params)
+    except httpx.HTTPError as err:
+        log.info("tools/call %s upstream error: %s", params.name,
+                 type(err).__name__)
+        return tool_error("Harbor's API couldn't answer that request.")
+
+
+async def _call_tool(ctx, params):
     name, args = params.name, dict(params.arguments or {})
     if name not in ROUTES:
         raise ValueError(f"unknown tool {name}")
@@ -262,7 +294,10 @@ async def call_tool(ctx, params):
     # The model's arguments are untrusted input: check them against the
     # schema this server published before any of them reaches a URL.
     try:
-        jsonschema.validate(args, SCHEMAS[name])
+        error = jsonschema.exceptions.best_match(
+            StrictValidator(SCHEMAS[name]).iter_errors(args))
+        if error is not None:
+            raise error
     except jsonschema.ValidationError as err:
         log.info("tools/call %s caller=%s refused: %s", name, customer,
                  err.message[:60])
@@ -384,8 +419,10 @@ class StepUp:
 
     MCP's step-up flow: the challenge names the scope the call needs, and
     the client asks the person for it and retries. The tool name comes
-    from the Mcp-Name header, which the SDK rejects (400) when it doesn't
-    match the body, and call_tool() checks the scope again regardless.
+    from the Mcp-Name header, decoded as the SDK decodes it. This wrapper
+    runs before the SDK; a request it passes on whose header doesn't match
+    the body is refused by the SDK (400, -32020), and call_tool() checks
+    the scope again, so a mislabeled header can't slip a write through.
     """
 
     def __init__(self, inner, verifier):
@@ -393,16 +430,19 @@ class StepUp:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and scope["path"] == "/mcp":
-            headers = {k.decode().lower(): v.decode()
+            headers = {k.decode("latin-1").lower(): v.decode("latin-1")
                        for k, v in scope["headers"]}
             auth = headers.get("authorization", "")
+            # Decode =?base64?...?= the way the SDK does, so an encoded
+            # name gets the same answer as a plain one.
+            tool = decode_header_value(headers.get("mcp-name"))
             if (headers.get("mcp-method") == "tools/call"
-                    and headers.get("mcp-name") in WRITE_TOOLS
+                    and tool in WRITE_TOOLS
                     and auth.startswith("Bearer ")):
                 token = await self.verifier.verify_token(auth[7:])
                 if token and "orders:write" not in token.scopes:
                     log.info("tools/call %s caller=%s 403 needs orders:write",
-                             headers["mcp-name"],
+                             tool,
                              token.claims.get("customer_id"))
                     challenge = (
                         'Bearer error="insufficient_scope", '

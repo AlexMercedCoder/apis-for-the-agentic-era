@@ -106,12 +106,12 @@ def main():
     lines["items"] = {"...": "book_id and quantity, as in Chapter 3"}
     section("tools/list: place_order", fit(place))
 
-    asked = message("tools/call", "recv", 0, "place_order")["body"]
+    asked = message("tools/call", "recv", 1, "place_order")["body"]
     state = asked["result"]["requestState"]
     asked["result"]["requestState"] = f"<signed, {len(state)} characters>"
     asked["result"].pop("_meta", None)
     section("tools/call place_order: input_required", fit(asked))
-    retry = message("tools/call", "send", 1, "place_order")["body"]
+    retry = message("tools/call", "send", 2, "place_order")["body"]
     params = retry["params"]
     section("tools/call place_order: the retry's params", fit({
         "name": params["name"], "arguments": params["arguments"],

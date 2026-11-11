@@ -571,6 +571,18 @@ check "ch10: a read-only token's write gets 403; step-up, then it asks first" \
            grep -q 'place_order caller=cus-001 input_required' '$CH10/mcp-server.log' &&
            grep -q 'POST /orders 201' '$CH10/mcp-server.log' &&
            grep -q 'ord-5005 for cus-001: placed, 1899 cents' '$CH10/mcp-client.out'"
+check "ch10: strict patterns, encoded Mcp-Name step-up, metadata resource check" \
+  bash -c "grep -q 'book_id .bk-1001.n.: is_error=True Invalid arguments' '$CH10/mcp-client.out' &&
+           grep -q 'Mcp-Name base64-encoded: 403' '$CH10/mcp-client.out' &&
+           cd ch10-agent-protocols && uv run -q python -c \"
+import mcp_client as c
+c.check_prm({'resource': c.MCP}, c.MCP)
+try:
+    c.check_prm({'resource': 'http://evil.example/mcp'}, c.MCP)
+    raise SystemExit(2)
+except SystemExit as e:
+    assert e.code != 2, 'foreign resource accepted'
+\""
 check "ch10: confirmation state refused if tampered, foreign, other call, expired" \
   bash -c "cd ch10-agent-protocols && uv run -q python -c \"
 import asyncio, time

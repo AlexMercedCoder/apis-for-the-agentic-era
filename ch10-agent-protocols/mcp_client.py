@@ -12,6 +12,7 @@ Every JSON-RPC message on the wire is appended to captures/mcp-wire.jsonl.
 """
 
 import asyncio
+import base64
 import json
 import os
 import re
@@ -33,6 +34,15 @@ def short(token):
     return f"<JWT {len(token)} chars>"
 
 
+def check_prm(prm, endpoint):
+    """RFC 9728 section 3.3: metadata found through a 401's resource_metadata
+    must name the URL the client called, or the client must not use it."""
+    if prm.get("resource") != endpoint:
+        raise SystemExit(f"metadata names resource {prm.get('resource')}, "
+                         f"not {endpoint}; refusing to use it")
+    return prm
+
+
 def discover_and_sign_in():
     first = httpx.post(MCP, json={"jsonrpc": "2.0", "id": 1,
                                   "method": "server/discover"},
@@ -42,7 +52,7 @@ def discover_and_sign_in():
     print(f"1. no token: {first.status_code}\n   www-authenticate: "
           f"{challenge}")
     prm_url = re.search(r'resource_metadata="([^"]+)"', challenge)[1]
-    prm = httpx.get(prm_url).json()
+    prm = check_prm(httpx.get(prm_url).json(), MCP)
     print(f"2. {prm_url}\n   {json.dumps(prm)}")
     issuer = prm["authorization_servers"][0]
     meta = httpx.get(f"{issuer}/.well-known/oauth-authorization-server"
@@ -83,6 +93,13 @@ def step_up(token, meta, prm):
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
         "Mcp-Name": "get_book"})
+    encoded = httpx.post(MCP, json=call, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
+        "Mcp-Name": "=?base64?" + base64.b64encode(b"place_order").decode()
+                    + "?="})
+    print(f"   same call with Mcp-Name base64-encoded: {encoded.status_code}")
     print(f"   same call labeled get_book in Mcp-Name: {sneak.status_code} "
           f"{sneak.json()['error']['code']} {sneak.json()['error']['message']}")
     wanted = re.search(r'scope="([^"]+)"', challenge)[1]
@@ -164,7 +181,11 @@ async def session(token, meta, prm):
               f"{prompt.messages[0].content.text[:60]}...")
     token = step_up(token, meta, prm)
     async with connect(token) as client:
-        print("13. place_order, which asks Rosa first:")
+        odd = await client.call_tool("place_order", {"lines": [
+            {"book_id": "bk-1001\n", "quantity": 1}]})
+        print(f"13. place_order with book_id 'bk-1001\\n': is_error="
+              f"{odd.is_error} {odd.content[0].text}")
+        print("14. place_order, which asks Rosa first:")
         order = await client.call_tool("place_order", {"lines": [
             {"book_id": "bk-1006", "quantity": 1}]})
         data = order.structured_content
