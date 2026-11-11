@@ -73,13 +73,13 @@
 === tools/call place_order: input_required
 {
   "jsonrpc": "2.0",
-  "id": 7,
+  "id": 2,
   "result": {
     "inputRequests": {
       "confirm": {
         "method": "elicitation/create",
         "params": {
-          "message": "Order 1 x Frankenstein for 2299 cents?",
+          "message": "Order 1 x Treasure Island for 1899 cents?",
           "mode": "form",
           "requestedSchema": {
             "properties": {
@@ -94,7 +94,7 @@
         }
       }
     },
-    "requestState": "<sealed, 300 characters>",
+    "requestState": "<signed, 300 characters>",
     "resultType": "input_required"
   }
 }
@@ -103,7 +103,7 @@
 {
   "name": "place_order",
   "arguments": {
-    "lines": [{"book_id": "bk-1003", "quantity": 1}]
+    "lines": [{"book_id": "bk-1006", "quantity": 1}]
   },
   "inputResponses": {
     "confirm": {
@@ -117,6 +117,7 @@
 === MCP server log
 tools/call get_order_status caller=cus-001 -> GET /orders/ord-5003 200
 tools/call get_order_status caller=cus-001 ord-5002 not theirs
+tools/call place_order caller=cus-001 403 needs orders:write
 tools/call place_order caller=cus-001 input_required
 tools/call place_order caller=cus-001 -> POST /orders 201
 token refused: DecodeError
@@ -129,12 +130,12 @@ token refused: DecodeError
 2. http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp
    {"resource": "http://127.0.0.1:8010/mcp", "authorization_servers":
        ["http://127.0.0.1:8080/realms/harbor"], "scopes_supported":
-       ["orders:read", "orders:write"], "bearer_methods_supported":
-       ["header"], "resource_name": "Harbor Books MCP server"}
+       ["orders:read"], "bearer_methods_supported": ["header"],
+       "resource_name": "Harbor Books MCP server"}
 3. authorization server http://127.0.0.1:8080/realms/harbor, PKCE
     ['plain', 'S256']
-4. rosa signed in: token <JWT 947 chars>, aud http://127.0.0.1:8010/mcp,
-    scope 'orders:read orders:write', customer_id cus-001
+4. rosa signed in: token <JWT 930 chars>, aud http://127.0.0.1:8010/mcp,
+    scope 'orders:read', customer_id cus-001
 5. a token for another resource: 400 invalid_target
 6. tools/list: 7 tools
    search_catalog    read-only
@@ -150,9 +151,16 @@ token refused: DecodeError
 9. resources/read harbor://books/bk-1001: Moby-Dick
 10. prompts/get where_is_my_order: The customer asks where order
     ord-5003 is. Call get_order_st...
-11. place_order, which asks Rosa first:
-   form shown to Rosa: Order 1 x Frankenstein for 2299 cents?
-   ord-5005 for cus-001: placed, 2299 cents
+11. place_order with that token: 403
+   www-authenticate: Bearer error="insufficient_scope",
+       scope="orders:read orders:write", resource_metadata="http://127.0
+       .0.1:8010/.well-known/oauth-protected-resource/mcp"
+   same call labeled get_book in Mcp-Name: 400
+12. rosa approved 'orders:read orders:write': token <JWT 947 chars>,
+    scope 'orders:read orders:write'
+13. place_order, which asks Rosa first:
+   form shown to Rosa: Order 1 x Treasure Island for 1899 cents?
+   ord-5005 for cus-001: placed, 1899 cents
 
 === Agent Card
 {
@@ -191,7 +199,7 @@ token refused: DecodeError
   "method": "SendStreamingMessage",
   "params": {
     "message": {
-      "messageId": "c43e9e03-...",
+      "messageId": "ae456dfe-...",
       "role": "ROLE_USER",
       "parts": [
         {
@@ -208,7 +216,7 @@ token refused: DecodeError
     "configuration": {
       "taskPushNotificationConfig": {
         "url": "http://127.0.0.1:8012/a2a/push",
-        "token": "not-a-real-push-token"
+        "token": "<32-character token, this task only>"
       }
     }
   }
@@ -216,11 +224,11 @@ token refused: DecodeError
 
 === A2A hand-off output
 response: 200 text/event-stream; charset=utf-8
-  task ccd89d0d TASK_STATE_SUBMITTED
+  task ad405e1c TASK_STATE_SUBMITTED
   status TASK_STATE_WORKING   Picking ord-5003
   status TASK_STATE_WORKING   Packed and gift-wrapped ord-5003
-  artifact shipment {"order_id": "ord-5003", "tracking": "DP50030042",
-      "gift_wrap": true, "carrier": "demo-post"}
+  artifact shipment {"carrier": "demo-post", "tracking": "DP50030042",
+      "order_id": "ord-5003", "gift_wrap": true}
   status TASK_STATE_COMPLETED ord-5003 handed to the carrier
 GetTask: TASK_STATE_COMPLETED, 1 artifact
 
@@ -228,16 +236,16 @@ GetTask: TASK_STATE_COMPLETED, 1 artifact
 data: {
   "result": {
     "statusUpdate": {
-      "taskId": "ccd89d0d-...",
-      "contextId": "a126b971-...",
+      "taskId": "ad405e1c-...",
+      "contextId": "ba9c8332-...",
       "status": {
         "state": "TASK_STATE_WORKING",
         "message": {
-          "messageId": "460c1762-...",
+          "messageId": "c1a2ff7b-...",
           "role": "ROLE_AGENT",
           "parts": [{"text": "Picking ord-5003"}]
         },
-        "timestamp": "2026-11-11T11:10:29.682800Z"
+        "timestamp": "2026-11-11T11:41:37.472571Z"
       }
     }
   },
@@ -250,14 +258,14 @@ card: Harbor Books fulfillment agent, skill arrange-delivery,
     streaming=True, push=True
 request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage",
     "params": {"message": {"messageId":
-    "4a4f1c18-bbb0-495c-8b2b-44b512b4d70c", "role": "ROLE_USER",
+    "2adbe715-073c-45fd-9594-03e3cfc9eebd", "role": "ROLE_USER",
     "parts": [{"text": "Please ship this order for Rosa."}, {"data":
     {"order_id": "ord-5002", "gift_wrap": true}}]}, "configuration":
     {"taskPushNotificationConfig": {"url":
-    "http://127.0.0.1:8012/a2a/push", "token":
-    "not-a-real-push-token"}}}}
+    "http://127.0.0.1:8012/a2a/push", "token": "<32-character token,
+    this task only>"}}}}
 response: 200 text/event-stream; charset=utf-8
-  task a27ba05a TASK_STATE_SUBMITTED
+  task df76bd93 TASK_STATE_SUBMITTED
   status TASK_STATE_REJECTED  ord-5002 isn't a paid order waiting to
       ship.
 GetTask: TASK_STATE_REJECTED, 0 artifact
@@ -267,26 +275,32 @@ card: Harbor Books fulfillment agent, skill arrange-delivery,
     streaming=True, push=True
 request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage",
     "params": {"message": {"messageId":
-    "78549f67-c0d9-4661-94e2-5dec5dc1a14a", "role": "ROLE_USER",
+    "fb03dac5-2280-48f2-8905-3e917b08ecfb", "role": "ROLE_USER",
     "parts": [{"text": "Please ship this order for Rosa."}, {"data":
     {"order_id": "ord-5003", "gift_wrap": true}}]}, "configuration":
     {"taskPushNotificationConfig": {"url":
-    "http://127.0.0.1:8012/a2a/push", "token":
-    "not-a-real-push-token"}}}}
+    "http://127.0.0.1:8012/a2a/push", "token": "<32-character token,
+    this task only>"}}}}
 response: 200 text/event-stream; charset=utf-8
-  task 00105bde TASK_STATE_SUBMITTED
+  task a7016fc2 TASK_STATE_SUBMITTED
   status TASK_STATE_REJECTED  ord-5003 isn't a paid order waiting to
       ship.
 GetTask: TASK_STATE_REJECTED, 0 artifact
 
+=== push-forged.out
+unknown token: 401
+another task's token: 403
+
 === push receiver log
-204 task ccd89d0d TASK_STATE_SUBMITTED
-204 task ccd89d0d TASK_STATE_WORKING
-204 task ccd89d0d TASK_STATE_WORKING
-204 task ccd89d0d artifact shipment
-204 task ccd89d0d TASK_STATE_COMPLETED
-204 task a27ba05a TASK_STATE_SUBMITTED
-204 task a27ba05a TASK_STATE_REJECTED
-204 task 00105bde TASK_STATE_SUBMITTED
-204 task 00105bde TASK_STATE_REJECTED
+204 task ad405e1c TASK_STATE_SUBMITTED
+204 task ad405e1c TASK_STATE_WORKING
+204 task ad405e1c TASK_STATE_WORKING
+204 task ad405e1c artifact shipment
+204 task ad405e1c TASK_STATE_COMPLETED
+204 task df76bd93 TASK_STATE_SUBMITTED
+204 task df76bd93 TASK_STATE_REJECTED
+204 task a7016fc2 TASK_STATE_SUBMITTED
+204 task a7016fc2 TASK_STATE_REJECTED
+401 push with a token this receiver never minted
+403 push for task forged-t with another task's token
 

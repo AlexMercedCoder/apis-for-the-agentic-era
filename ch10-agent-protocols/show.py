@@ -108,7 +108,7 @@ def main():
 
     asked = message("tools/call", "recv", 0, "place_order")["body"]
     state = asked["result"]["requestState"]
-    asked["result"]["requestState"] = f"<sealed, {len(state)} characters>"
+    asked["result"]["requestState"] = f"<signed, {len(state)} characters>"
     asked["result"].pop("_meta", None)
     section("tools/call place_order: input_required", fit(asked))
     retry = message("tools/call", "send", 1, "place_order")["body"]
@@ -148,6 +148,7 @@ def main():
     section("one SSE event", "data: " + fit(event))
     for name in ("a2a-reject.out", "a2a-repeat.out"):
         section(name, wrap((CAP / name).read_text().strip()))
+    section("push-forged.out", (CAP / "push-forged.out").read_text().strip())
     section("push receiver log",
             (CAP / "push-receiver.log").read_text().strip())
 

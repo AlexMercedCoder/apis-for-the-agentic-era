@@ -58,6 +58,33 @@ def discover_and_sign_in():
     other = sign_in(meta, "http://127.0.0.1:9999/mcp", scope, "rosa")
     print(f"5. a token for another resource: {other.status_code} "
           f"{other.json()['error']}")
+    return token, meta, prm
+
+
+def step_up(token, meta, prm):
+    """A write with a read-only token gets 403; ask Rosa for more, retry."""
+    call = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "place_order", "arguments": {}, "_meta": {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28"}}}
+    resp = httpx.post(MCP, json=call, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
+        "Mcp-Name": "place_order"})
+    challenge = resp.headers["www-authenticate"]
+    print(f"11. place_order with that token: {resp.status_code}\n"
+          f"   www-authenticate: {challenge}")
+    sneak = httpx.post(MCP, json=call, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
+        "Mcp-Name": "get_book"})
+    print(f"   same call labeled get_book in Mcp-Name: {sneak.status_code}")
+    wanted = re.search(r'scope="([^"]+)"', challenge)[1]
+    again = sign_in(meta, prm["resource"], wanted, "rosa")
+    token = again.json()["access_token"]
+    print(f"12. rosa approved {wanted!r}: token {short(token)}, scope "
+          f"{token_claims(token)['scope']!r}")
     return token
 
 
@@ -82,21 +109,28 @@ async def log_response(response):
 
 
 async def rosa_says_yes(context, params):
-    """Stands in for Rosa clicking Yes on the host's confirmation form."""
+    """Stands in for Rosa clicking Yes on the host's confirmation form.
+
+    A demo stand-in only: a real host shows the form to the person and
+    never lets the model, or code, answer it.
+    """
     print(f"   form shown to Rosa: {params.message}")
     return types.ElicitResult(action="accept", content={"confirm": True})
 
 
-async def session(token):
-    WIRE.write_text("")
+def connect(token):
     http = httpx2.AsyncClient(
         headers={"Authorization": f"Bearer {token}"},
         event_hooks={"request": [log_request], "response": [log_response]})
-    async with Client(streamable_http_client(MCP, http_client=http),
-                      elicitation_callback=rosa_says_yes,
-                      client_info=types.Implementation(
-                          name="harbor-demo-host", version="1.0.0")
-                      ) as client:
+    return Client(streamable_http_client(MCP, http_client=http),
+                  elicitation_callback=rosa_says_yes,
+                  client_info=types.Implementation(
+                      name="harbor-demo-host", version="1.0.0"))
+
+
+async def session(token, meta, prm):
+    WIRE.write_text("")
+    async with connect(token) as client:
         tools = await client.list_tools()
         print(f"6. tools/list: {len(tools.tools)} tools")
         for tool in tools.tools:
@@ -119,13 +153,15 @@ async def session(token):
                                          {"order_id": "ord-5003"})
         print(f"10. prompts/get where_is_my_order: "
               f"{prompt.messages[0].content.text[:60]}...")
-        print("11. place_order, which asks Rosa first:")
+    token = step_up(token, meta, prm)
+    async with connect(token) as client:
+        print("13. place_order, which asks Rosa first:")
         order = await client.call_tool("place_order", {"lines": [
-            {"book_id": "bk-1003", "quantity": 1}]})
+            {"book_id": "bk-1006", "quantity": 1}]})
         data = order.structured_content
         print(f"   {data['id']} for {data['customer_id']}: "
               f"{data['status']}, {data['total_cents']} cents")
 
 
 if __name__ == "__main__":
-    asyncio.run(session(discover_and_sign_in()))
+    asyncio.run(session(*discover_and_sign_in()))

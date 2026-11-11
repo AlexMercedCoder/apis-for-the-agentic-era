@@ -8,7 +8,17 @@ are a stand-in on a short timer; no model runs here, and an A2A agent
 doesn't need one to speak the protocol.
 
 Push notifications go only to URLs on an allow-list (Chapter 6's lesson on
-senders that post wherever a subscriber says).
+senders that post wherever a subscriber says). The allow-list stands in for
+the SDK's validate_push_notification_url, which refuses loopback, private,
+and link-local addresses and would refuse this demo's 127.0.0.1 receiver;
+an agent with many customers uses that validator, not a list.
+
+Not production-ready on purpose, and the chapter says so: the card declares
+no securitySchemes, and the agent doesn't check that the caller may act
+for the order's customer or limit GetTask to the task's creator. A real
+fulfillment agent requires a token for its own audience (Chapter 8's token
+exchange), checks the order's customer before touching the order, and
+returns tasks only to the caller that created them.
 
     uv run python fulfillment_agent.py
 """

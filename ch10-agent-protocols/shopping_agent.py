@@ -11,6 +11,7 @@ the model that would decide to delegate.
 
 import json
 import os
+import secrets
 import sys
 import uuid
 
@@ -52,6 +53,9 @@ def main(order_id):
           f"streaming={card['capabilities']['streaming']}, "
           f"push={card['capabilities']['pushNotifications']}")
     endpoint = card["supportedInterfaces"][0]["url"]
+    push_token = secrets.token_urlsafe(24)     # one per task, single-purpose
+    with (OUT / "push-tokens.txt").open("a") as f:
+        f.write(push_token + "\n")
     params = {
         "message": {
             "messageId": str(uuid.uuid4()), "role": "ROLE_USER",
@@ -59,9 +63,12 @@ def main(order_id):
                       {"data": {"order_id": order_id, "gift_wrap": True}}]},
         "configuration": {"taskPushNotificationConfig": {
             "url": "http://127.0.0.1:8012/a2a/push",
-            "token": "not-a-real-push-token"}}}
+            "token": push_token}}}
     body = rpc("SendStreamingMessage", params, 1)
-    print("request: " + json.dumps(body))
+    shown = json.loads(json.dumps(body))
+    shown["params"]["configuration"]["taskPushNotificationConfig"][
+        "token"] = f"<{len(push_token)}-character token, this task only>"
+    print("request: " + json.dumps(shown))
     task_id = None
     raw = (OUT / f"a2a-stream-{order_id}.txt").open("w")
     with httpx.stream("POST", endpoint, json=body, headers=HEADERS,

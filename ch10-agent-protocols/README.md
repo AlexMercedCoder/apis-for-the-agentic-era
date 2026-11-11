@@ -27,17 +27,17 @@ It starts, all on `127.0.0.1`:
 | 8011 | `fulfillment_agent.py`: A2A 1.0 JSON-RPC binding at `/`, Agent Card at `/.well-known/agent-card.json` |
 | 8012 | `push_receiver.py`: the shopping agent's push receiver at `/a2a/push` |
 
-Then it runs `mcp_client.py`, a request with a bad token, and `shopping_agent.py` three times (ships `ord-5003`, rejects shipped `ord-5002`, rejects a repeat for `ord-5003`), and writes `captures/`. It takes about two minutes, mostly Keycloak's start. `KEEP=1 ./run.sh` leaves Keycloak running.
+Then it runs `mcp_client.py`, a request with a bad token, `shopping_agent.py` three times (ships `ord-5003`, rejects shipped `ord-5002`, rejects a repeat for `ord-5003`), and two forged pushes (an unknown token gets 401, another task's token 403), and writes `captures/`. It takes about two minutes, mostly Keycloak's start. `KEEP=1 ./run.sh` leaves Keycloak running.
 
 ## Files
 
 - `setup_realm.py`: realm `harbor`; scopes `orders:read`, `orders:write`; client `harbor-mcp` (the MCP server, `resource_url` `http://127.0.0.1:8010/mcp`); public client `harbor-mcp-client` (code + PKCE S256, consent, audience mapper to `harbor-mcp`, `customer_id` claim); users `rosa` (`cus-001`) and `sam` (`cus-002`), password `not-a-real-password`.
 - `login.py`: scripted sign-in with PKCE, `state`, `iss` check (RFC 9207), and `resource` (RFC 8707) on both requests.
-- `harbor_mcp.py`: builds seven tools from `../ch03-rest-apis/openapi.json` (operationId as name; `customer_id` filled from the token; `Idempotency-Key` filled by the server; `GET` is `readOnlyHint`, `PUT` destructive and idempotent). Validates Keycloak tokens (RS256, `at+jwt`, issuer, audience `/mcp`), never forwards them, answers others' orders as missing, and confirms every write with a multi round-trip elicitation whose `requestState` is HMAC-sealed and bound to the person, the arguments, five minutes, and one idempotency key. One resource template (`harbor://books/{book_id}`) and one prompt (`where_is_my_order`).
-- `mcp_client.py`: the official SDK client; discovery from the 401, sign-in, then `server/discover`, `tools/list`, `tools/call`, `resources/read`, `prompts/get`, and a confirmed `place_order`. Logs every JSON-RPC message to `captures/mcp-wire.jsonl`.
-- `fulfillment_agent.py`: A2A SDK server, skill `arrange-delivery`; tasks go submitted, working, working, artifact `shipment`, completed (stand-in timer), or rejected. Pushes only to an allow-listed URL.
-- `shopping_agent.py`: plain httpx JSON-RPC client: Agent Card, `SendStreamingMessage` with a data part and a push config, `GetTask`.
-- `push_receiver.py`: checks the push token in constant time and processes each update once.
+- `harbor_mcp.py`: Protected Resource Metadata lists only `orders:read`; a write tool called with a read-only token gets HTTP 403 `insufficient_scope` with `scope="orders:read orders:write"` (step-up; the tool name comes from `Mcp-Name`, which the SDK rejects with 400 when it disagrees with the body). Builds seven tools from `../ch03-rest-apis/openapi.json` (operationId as name; `customer_id` filled from the token; `Idempotency-Key` filled by the server; `GET` is `readOnlyHint`, `PUT` destructive and idempotent). Validates Keycloak tokens (RS256, `at+jwt`, issuer, audience `/mcp`), never forwards them, answers others' orders as missing, and confirms every write with a multi round-trip elicitation whose `requestState` is HMAC-sealed and bound to the person, the arguments, five minutes, and one idempotency key. One resource template (`harbor://books/{book_id}`) and one prompt (`where_is_my_order`).
+- `mcp_client.py`: the official SDK client; discovery from the 401, sign-in for `orders:read`, then `server/discover`, `tools/list`, `tools/call`, `resources/read`, `prompts/get`; a write that gets the 403, a step-up sign-in for `orders:write`, and a confirmed `place_order` (one *Treasure Island*). The callback that answers Rosa's confirmation is a demo stand-in; a real host shows the form to the person and never lets the model or code answer. Logs every JSON-RPC message to `captures/mcp-wire.jsonl`.
+- `fulfillment_agent.py`: A2A SDK server, skill `arrange-delivery`; tasks go submitted, working, working, artifact `shipment`, completed (stand-in timer), or rejected. Pushes only to an allow-listed URL (a stand-in for the SDK's `validate_push_notification_url`, which refuses loopback). Not production-ready: no `securitySchemes`, no per-order authorization, `GetTask` not limited to the creator; see the docstring.
+- `shopping_agent.py`: plain httpx JSON-RPC client: Agent Card, `SendStreamingMessage` with a data part and a push config carrying a fresh token for this task only (registered with the receiver through `captures/push-tokens.txt`), `GetTask`.
+- `push_receiver.py`: accepts only tokens the shopping agent minted (constant-time compare, else 401), binds each token to the first task it arrives with (another task gets 403), and processes each update once. Production adds HTTPS and `authentication` credentials.
 - `show.py`: prints the chapter's listings from the captures at 72 columns (`captures/listings.txt`).
 
 ## Expected output (from `captures/`)
@@ -49,19 +49,21 @@ Then it runs `mcp_client.py`, a request with a bad token, and `shopping_agent.py
 8. get_order_status ord-5002 (Sam's): is_error=True No order with id
     ord-5002.
 ...
-   form shown to Rosa: Order 1 x Frankenstein for 2299 cents?
-   ord-5005 for cus-001: placed, 2299 cents
+11. place_order with that token: 403
+...
+   form shown to Rosa: Order 1 x Treasure Island for 1899 cents?
+   ord-5005 for cus-001: placed, 1899 cents
 ```
 
 ```text
 response: 200 text/event-stream; charset=utf-8
-  task ccd89d0d TASK_STATE_SUBMITTED
+  task ad405e1c TASK_STATE_SUBMITTED
   status TASK_STATE_WORKING   Picking ord-5003
   status TASK_STATE_WORKING   Packed and gift-wrapped ord-5003
-  artifact shipment {"order_id": "ord-5003", "tracking": "DP50030042",
-      "gift_wrap": true, "carrier": "demo-post"}
+  artifact shipment {"carrier": "demo-post", "tracking": "DP50030042",
+      "order_id": "ord-5003", "gift_wrap": true}
   status TASK_STATE_COMPLETED ord-5003 handed to the carrier
 GetTask: TASK_STATE_COMPLETED, 1 artifact
 ```
 
-Task IDs differ on every run.
+Task IDs, and the order of keys in the artifact, differ between runs.

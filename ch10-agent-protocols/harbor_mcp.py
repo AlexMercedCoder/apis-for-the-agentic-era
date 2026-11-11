@@ -153,8 +153,14 @@ def caller():
 
 
 # -- confirmations: multi round-trip requests ---------------------------------
+# The confirmation proves only that the client answered. It stops a model
+# acting alone inside an honest host; it doesn't stop a host that answers
+# for the person. A host must never let the model answer an elicitation, and
+# a payment that needs proof from the person belongs in URL-mode elicitation
+# to the server's own page, or a step-up sign-in.
 
 def seal(payload):
+    """Sign the state (HMAC-SHA256). Signed, not encrypted: it's readable."""
     raw = json.dumps(payload, sort_keys=True).encode()
     tag = hmac.new(STATE_KEY, raw, hashlib.sha256).digest()
     return base64.urlsafe_b64encode(raw + tag).decode()
@@ -341,21 +347,65 @@ server = Server(
     on_list_prompts=list_prompts, on_get_prompt=get_prompt)
 
 
+WRITE_TOOLS = {name for name, (method, *_rest) in ROUTES.items()
+               if method != "get"}
+PRM_URL = "http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp"
+
+
+class StepUp:
+    """Answer a write tool called with a read-only token with HTTP 403.
+
+    MCP's step-up flow: the challenge names the scope the call needs, and
+    the client asks the person for it and retries. The tool name comes
+    from the Mcp-Name header, which the SDK rejects (400) when it doesn't
+    match the body, and call_tool() checks the scope again regardless.
+    """
+
+    def __init__(self, inner, verifier):
+        self.inner, self.verifier = inner, verifier
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"] == "/mcp":
+            headers = {k.decode().lower(): v.decode()
+                       for k, v in scope["headers"]}
+            auth = headers.get("authorization", "")
+            if (headers.get("mcp-method") == "tools/call"
+                    and headers.get("mcp-name") in WRITE_TOOLS
+                    and auth.startswith("Bearer ")):
+                token = await self.verifier.verify_token(auth[7:])
+                if token and "orders:write" not in token.scopes:
+                    log.info("tools/call %s caller=%s 403 needs orders:write",
+                             headers["mcp-name"],
+                             token.claims.get("customer_id"))
+                    challenge = (
+                        'Bearer error="insufficient_scope", '
+                        'scope="orders:read orders:write", '
+                        f'resource_metadata="{PRM_URL}"')
+                    await send({"type": "http.response.start", "status": 403,
+                                "headers": [(b"www-authenticate",
+                                             challenge.encode()),
+                                            (b"content-length", b"0")]})
+                    await send({"type": "http.response.body", "body": b""})
+                    return
+        await self.inner(scope, receive, send)
+
+
 def app():
+    verifier = KeycloakVerifier()
     asgi = server.streamable_http_app(
         streamable_http_path="/mcp", json_response=True,
         auth=AuthSettings(issuer_url=ISSUER, resource_server_url=RESOURCE,
                           required_scopes=["orders:read"],
                           validate_token_resource=False),
-        token_verifier=KeycloakVerifier())
-    # Publish both scopes in the Protected Resource Metadata (RFC 9728),
-    # ahead of the SDK's default document, which lists only the required one.
+        token_verifier=verifier)
+    # Protected Resource Metadata (RFC 9728) lists the minimal scope for
+    # basic use; orders:write is requested later, by step-up, when needed.
     for route in reversed(create_protected_resource_routes(
             resource_url=RESOURCE, authorization_servers=[ISSUER],
-            scopes_supported=["orders:read", "orders:write"],
+            scopes_supported=["orders:read"],
             resource_name="Harbor Books MCP server")):
         asgi.router.routes.insert(0, route)
-    return asgi
+    return StepUp(asgi, verifier)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 1. no token: 401
    www-authenticate: Bearer error="invalid_token", error_description="Authentication required", resource_metadata="http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp"
 2. http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp
-   {"resource": "http://127.0.0.1:8010/mcp", "authorization_servers": ["http://127.0.0.1:8080/realms/harbor"], "scopes_supported": ["orders:read", "orders:write"], "bearer_methods_supported": ["header"], "resource_name": "Harbor Books MCP server"}
+   {"resource": "http://127.0.0.1:8010/mcp", "authorization_servers": ["http://127.0.0.1:8080/realms/harbor"], "scopes_supported": ["orders:read"], "bearer_methods_supported": ["header"], "resource_name": "Harbor Books MCP server"}
 3. authorization server http://127.0.0.1:8080/realms/harbor, PKCE ['plain', 'S256']
-4. rosa signed in: token <JWT 947 chars>, aud http://127.0.0.1:8010/mcp, scope 'orders:read orders:write', customer_id cus-001
+4. rosa signed in: token <JWT 930 chars>, aud http://127.0.0.1:8010/mcp, scope 'orders:read', customer_id cus-001
 5. a token for another resource: 400 invalid_target
 6. tools/list: 7 tools
    search_catalog    read-only
@@ -17,6 +17,10 @@
 8. get_order_status ord-5002 (Sam's): is_error=True No order with id ord-5002.
 9. resources/read harbor://books/bk-1001: Moby-Dick
 10. prompts/get where_is_my_order: The customer asks where order ord-5003 is. Call get_order_st...
-11. place_order, which asks Rosa first:
-   form shown to Rosa: Order 1 x Frankenstein for 2299 cents?
-   ord-5005 for cus-001: placed, 2299 cents
+11. place_order with that token: 403
+   www-authenticate: Bearer error="insufficient_scope", scope="orders:read orders:write", resource_metadata="http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp"
+   same call labeled get_book in Mcp-Name: 400
+12. rosa approved 'orders:read orders:write': token <JWT 947 chars>, scope 'orders:read orders:write'
+13. place_order, which asks Rosa first:
+   form shown to Rosa: Order 1 x Treasure Island for 1899 cents?
+   ord-5005 for cus-001: placed, 1899 cents

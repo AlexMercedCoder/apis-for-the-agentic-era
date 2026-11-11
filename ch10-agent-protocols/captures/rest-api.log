@@ -2,6 +2,6 @@
 "GET /orders/ord-5003 HTTP/1.1" 200
 "GET /orders/ord-5002 HTTP/1.1" 200
 "GET /books/bk-1001 HTTP/1.1" 200
-"GET /books/bk-1003 HTTP/1.1" 200
-"GET /books/bk-1003 HTTP/1.1" 200
+"GET /books/bk-1006 HTTP/1.1" 200
+"GET /books/bk-1006 HTTP/1.1" 200
 "POST /orders HTTP/1.1" 201 idempotency=new

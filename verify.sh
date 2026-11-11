@@ -544,7 +544,7 @@ check "ch10: run.sh completes" env OUT="$CH10" ch10-agent-protocols/run.sh
 check "ch10: 401 points to metadata; Keycloak binds the token to /mcp" \
   bash -c "grep -q '1. no token: 401' '$CH10/mcp-client.out' &&
            grep -q 'oauth-protected-resource/mcp' '$CH10/mcp-client.out' &&
-           grep -q '\"orders:read\", \"orders:write\"' '$CH10/mcp-client.out' &&
+           grep -q 'scopes_supported\": \[\"orders:read\"\]' '$CH10/mcp-client.out' &&
            grep -q 'aud http://127.0.0.1:8010/mcp' '$CH10/mcp-client.out' &&
            grep -q 'another resource: 400 invalid_target' '$CH10/mcp-client.out' &&
            [ \"\$(cat '$CH10/mcp-bad-token.out')\" = 401 ]"
@@ -562,10 +562,13 @@ check "ch10: 2026-07-28 on every request; server/discover first" \
            [ \"\$(grep -c '\"dir\": \"send\"' '$CH10/mcp-wire.jsonl')\" = \
              \"\$(grep -c 'io.modelcontextprotocol/protocolVersion\": \"2026-07-28' '$CH10/mcp-wire.jsonl')\" ] &&
            ! grep -q '\"initialize\"' '$CH10/mcp-wire.jsonl'"
-check "ch10: place_order asks first, then places one order" \
-  bash -c "grep -q 'place_order caller=cus-001 input_required' '$CH10/mcp-server.log' &&
+check "ch10: a read-only token's write gets 403; step-up, then it asks first" \
+  bash -c "grep -q 'place_order with that token: 403' '$CH10/mcp-client.out' &&
+           grep -q 'scope=\"orders:read orders:write\"' '$CH10/mcp-client.out' &&
+           grep -q 'labeled get_book in Mcp-Name: 400' '$CH10/mcp-client.out' &&
+           grep -q 'place_order caller=cus-001 input_required' '$CH10/mcp-server.log' &&
            grep -q 'POST /orders 201' '$CH10/mcp-server.log' &&
-           grep -q 'ord-5005 for cus-001: placed, 2299 cents' '$CH10/mcp-client.out'"
+           grep -q 'ord-5005 for cus-001: placed, 1899 cents' '$CH10/mcp-client.out'"
 check "ch10: the confirmation's state can't be tampered with or reused" \
   bash -c "cd ch10-agent-protocols && uv run -q python -c \"
 import harbor_mcp as m
@@ -585,8 +588,10 @@ check "ch10: A2A task streams to completed with a shipment artifact" \
 check "ch10: shipped and repeated hand-offs are rejected" \
   bash -c "grep -q 'TASK_STATE_REJECTED  ord-5002' '$CH10/a2a-reject.out' &&
            grep -q 'TASK_STATE_REJECTED  ord-5003' '$CH10/a2a-repeat.out'"
-check "ch10: pushes reach the receiver, ending in completed" \
-  bash -c "grep -qE '204 task [0-9a-f]{8} TASK_STATE_COMPLETED' '$CH10/push-receiver.log'"
+check "ch10: pushes reach the receiver; foreign and cross-task tokens refused" \
+  bash -c "grep -qE '204 task [0-9a-f]{8} TASK_STATE_COMPLETED' '$CH10/push-receiver.log' &&
+           grep -q 'unknown token: 401' '$CH10/push-forged.out' &&
+           grep -q 'task.s token: 403' '$CH10/push-forged.out'"
 check "ch10: printed listings fit 72 columns; no access token captured" \
   bash -c "[ -s '$CH10/listings.txt' ] && ! grep -rq 'eyJhbGci' '$CH10'"
 
