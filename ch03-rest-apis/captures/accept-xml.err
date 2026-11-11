@@ -7,7 +7,7 @@
 > 
 * Mark bundle as not supporting multiuse
 < HTTP/1.1 406 Not Acceptable
-< date: Wed, 11 Nov 2026 04:07:16 GMT
+< date: Wed, 11 Nov 2026 04:15:46 GMT
 < server: harbor-ch03/1.0
 < content-length: 264
 < content-type: application/problem+json

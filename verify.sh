@@ -180,6 +180,21 @@ k = '6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b'
 assert r.fullmatch(h.KEY_PATTERN, chr(34) + k + chr(34))
 assert not r.fullmatch(h.KEY_PATTERN, k)
 \""
+check "ch03: weak ETags match, next URLs are encoded, keys must be UUIDs" \
+  bash -c "cd ch03-rest-apis && uv run -q python -c \"
+from fastapi.testclient import TestClient
+import harbor_api as h
+c = TestClient(h.app)
+etag = c.get('/books/bk-1001').headers['etag']
+assert c.get('/books/bk-1001',
+             headers={'If-None-Match': 'W/' + etag}).status_code == 304
+assert c.get('/books?limit=1&q=the ').json()['next'].endswith('q=the+')
+body = {'customer_id': 'cus-001',
+        'lines': [{'book_id': 'bk-1002', 'quantity': 1}]}
+bad = chr(34) + 'a' * 16 + chr(34)
+r = c.post('/orders', json=body, headers={'Idempotency-Key': bad})
+assert r.status_code == 400, r.status_code
+\""
 
 echo
 echo "$PASS passed, $FAIL failed"

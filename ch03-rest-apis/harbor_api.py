@@ -20,6 +20,8 @@ import hashlib
 import json
 import sys
 import threading
+import time
+from urllib.parse import urlencode
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Literal
@@ -36,7 +38,9 @@ DATA = Path(__file__).resolve().parent.parent / "harbor-data"
 PROBLEMS = "https://harbor.example/problems/"
 PORT = 8003
 KEY_TTL_HOURS = 24
-KEY_PATTERN = r'^"[A-Za-z0-9-]{16,64}"$'  # an RFC 9651 sf-string
+# A quoted UUID: an RFC 9651 sf-string, as draft-08 section 2.1 requires,
+# holding the random identifier its section 2.2 recommends.
+KEY_PATTERN = r'^"[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"$'
 
 BookId = Annotated[str, PathParam(pattern=r"^bk-[0-9]{4}$",
                                   description="Harbor book ID, such as "
@@ -141,7 +145,8 @@ class Store:
         self.orders = {o["id"]: o for o in self._load("orders.json")}
         self.reviews = self._load("reviews.json")
         self.cancellations = {}
-        self.keys = {}  # (customer, key) -> (fingerprint, status, body)
+        self.keys = {}  # (customer, key) -> (fingerprint, status, body,
+        #                                    stored_at)
 
     @staticmethod
     def _load(name):
@@ -286,8 +291,7 @@ async def on_invalid(request: Request, exc: RequestValidationError):
         return problem_response(
             request, 400, "idempotency-key-invalid",
             "Idempotency-Key malformed",
-            "The key must be a quoted string of 16 to 64 letters, "
-            "digits, or hyphens.",
+            "The key must be a lowercase UUID in double quotes.",
             hint='Send a quoted UUID, such as "8e03978e-40d5-43e8-'
                  'bc93-6894a57f9324".')
     return problem_response(
@@ -318,9 +322,10 @@ def search_catalog(
     page = books[:limit]
     nxt = None
     if len(books) > limit:
-        nxt = f"/books?limit={limit}&cursor={page[-1]['id']}"
+        params = {"limit": limit, "cursor": page[-1]["id"]}
         if q:
-            nxt += f"&q={q}"
+            params["q"] = q
+        nxt = "/books?" + urlencode(params)
     return {"items": page, "next": nxt}
 
 
@@ -341,7 +346,9 @@ def get_book(book_id: BookId, request: Request):
     etag = '"' + hashlib.sha256(body).hexdigest()[:16] + '"'
     headers = {"ETag": etag, "Cache-Control": "max-age=60"}
     match = request.headers.get("if-none-match", "")
-    if etag in [t.strip() for t in match.split(",")] or match == "*":
+    # RFC 9110 section 13.1.2: If-None-Match uses weak comparison.
+    tags = [t.strip().removeprefix("W/") for t in match.split(",")]
+    if etag in tags or match.strip() == "*":
         return Response(status_code=304, headers=headers)
     return Response(body, media_type="application/json", headers=headers)
 
@@ -377,12 +384,16 @@ def place_order(
                         "to retry the same order")]):
     fingerprint = hashlib.sha256(
         order_in.model_dump_json().encode()).hexdigest()
-    # Keys are scoped to the customer, so one caller can't replay or
-    # probe another's orders (draft-08 section 5). Chapter 8 replaces
-    # the asserted customer_id with an authenticated identity.
+    # Keys are scoped to (customer_id, key), the composite key draft-08
+    # section 5 describes. customer_id comes from the request body, so
+    # this protects nothing until Chapter 8 authenticates the caller and
+    # the scope comes from that identity instead.
     scoped = (order_in.customer_id, idempotency_key)
     with store.lock:
         seen = store.keys.get(scoped)
+        if seen is not None and seen[3] < time.time() - KEY_TTL_HOURS * 3600:
+            del store.keys[scoped]
+            seen = None
         if seen is not None:
             if seen[0] == "in-progress":
                 raise ProblemError(409, "idempotency-key-in-use",
@@ -400,7 +411,7 @@ def place_order(
             return PrettyJSON(seen[2], status_code=seen[1],
                                 headers={"Location": seen[2]["links"]
                                          ["self"]["href"]})
-        store.keys[scoped] = ("in-progress", None, None)
+        store.keys[scoped] = ("in-progress", None, None, time.time())
     try:
         lines = []
         for line in order_in.lines:
@@ -437,7 +448,7 @@ def place_order(
             }
             store.orders[order["id"]] = order
             view = order_view(order)
-            store.keys[scoped] = (fingerprint, 201, view)
+            store.keys[scoped] = (fingerprint, 201, view, time.time())
     except Exception:
         with store.lock:
             store.keys.pop(scoped, None)

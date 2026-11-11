@@ -14,7 +14,7 @@
       required: true
       schema:
         type: string
-        pattern: ^"[A-Za-z0-9-]{16,64}"$
+        pattern: ^"[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"$
       description: A new quoted UUID per order; reuse it only to retry
         the same order
     requestBody:

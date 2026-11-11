@@ -2,7 +2,7 @@
   "type": "https://harbor.example/problems/idempotency-key-invalid",
   "title": "Idempotency-Key malformed",
   "status": 400,
-  "detail": "The key must be a quoted string of 16 to 64 letters, digits, or hyphens.",
+  "detail": "The key must be a lowercase UUID in double quotes.",
   "instance": "/orders",
   "hint": "Send a quoted UUID, such as \"8e03978e-40d5-43e8-bc93-6894a57f9324\"."
 }
