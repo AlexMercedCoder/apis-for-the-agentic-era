@@ -583,6 +583,18 @@ try:
 except SystemExit as e:
     assert e.code != 2, 'foreign resource accepted'
 \""
+check "ch10: a non-JSON upstream error becomes a tool error, not a crash" \
+  bash -c "cd ch10-agent-protocols && uv run -q python -c \"
+import asyncio, httpx, harbor_mcp as m, mcp_types as t
+async def broken(method, path, **kw):
+    return httpx.Response(500, text='Internal Server Error')
+m.rest = broken
+m.caller = lambda: ('cus-001', {'orders:read', 'orders:write'}, 'a')
+for name, args in [('get_book', {'book_id': 'bk-1001'}),
+                   ('place_order', {'lines': [{'book_id': 'bk-1001', 'quantity': 1}]})]:
+    r = asyncio.run(m.call_tool(None, t.CallToolRequestParams(name=name, arguments=args)))
+    assert r.is_error, name
+\""
 check "ch10: confirmation state refused if tampered, foreign, other call, expired" \
   bash -c "cd ch10-agent-protocols && uv run -q python -c \"
 import asyncio, time

@@ -279,7 +279,7 @@ async def list_tools(ctx, params):
 async def call_tool(ctx, params):
     try:
         return await _call_tool(ctx, params)
-    except httpx.HTTPError as err:
+    except (httpx.HTTPError, json.JSONDecodeError) as err:
         log.info("tools/call %s upstream error: %s", params.name,
                  type(err).__name__)
         return tool_error("Harbor's API couldn't answer that request.")
