@@ -24,11 +24,11 @@ It starts, all on `127.0.0.1`:
 |---|---|
 | 8110 | `issuer.py`: test issuer, discovery document and JWKS (stands in for Chapter 8's Keycloak) |
 | 8003 | Chapter 3's API with Chapter 3's logger, unchanged; the MCP server's upstream, as in Chapter 10 |
-| 8111 | the same app behind `harbor_backend.py`'s gate: RS256, `at+jwt`, issuer, audience `http://127.0.0.1:9080`, scopes, ownership (one 404), body `customer_id`, JSON log with the raw path |
-| 8010 | `mcp_server.py`: Chapter 10's MCP server with the issuer and resource (`http://127.0.0.1:9080/mcp`) changed |
+| 8111 | the same app behind `harbor_backend.py`'s gate: RS256, `at+jwt`, issuer, audience `http://127.0.0.1:9080`, requires `exp`, `iat`, `iss`, `aud`, `sub`, scopes, ownership (one 404), body `customer_id`, JSON log with the raw path |
+| 8010 | `mcp_server.py`: Chapter 10's MCP server with the issuer and resource (`http://127.0.0.1:9080/mcp`) changed, and tokens missing `exp`, `iat`, `iss`, `aud`, or `sub` refused |
 | 9080 | Apache APISIX 3.19.0, standalone (`apisix/config.yaml`, routes in `apisix/apisix.yaml.tmpl`, rendered by `render.py`) |
 
-Then it lints and diffs the contracts, sends the gateway and BOLA requests, sends eleven MCP calls as the assistant (the eleventh gets 429), waits out the rate-limit window, runs `agent_host.py`, sends a log-injection path, and runs `inventory.py`. It takes about 90 seconds.
+Then it lints and diffs the contracts, sends the gateway and BOLA requests, sends eleven MCP calls as Rosa's assistant (the eleventh gets 429) and one as Sam's (still 200), probes the gateway's rules, waits out the rate-limit window, runs `agent_host.py`, sends a log-injection path, and runs `inventory.py`. It takes about 90 seconds.
 
 ## What each capture shows
 
@@ -37,14 +37,17 @@ Then it lints and diffs the contracts, sends the gateway and BOLA requests, send
 - `gateway-callers.out`: no token 401; the assistant's token on the REST route 403; the storefront's 200 with `X-RateLimit-*`.
 - `deprecated.out`: `/v0/books/*` answers with `Deprecation` (RFC 9745), `Sunset` (RFC 8594), and `Link rel="deprecation"`.
 - `bola.out`: Chapter 3's API returns Sam's `ord-5002` to anyone; through the gateway Rosa's token gets 404.
-- `rate-limit.out`: ten 200s, then 429 with `X-RateLimit-Remaining: 0`. APISIX's default is 503; the consumer sets 429.
-- `agent-host.out`, `audit.jsonl`, `trace.jsonl`, `gateway-access.jsonl`, `mcp-server.log`: the planted review `rev-004` (`planted-review.json`) arrives through `list_reviews`; the host flags it, holds the stand-in's `cancel_order`, and the run then shows the gateway's 403 (route `mcp-write-tools`) and the MCP server's `insufficient_scope`. Audit records, spans (GenAI semantic conventions), and gateway log lines share one trace ID.
+- `rate-limit.out`: ten 200s for Rosa's assistant, then 429 with `X-RateLimit-Remaining: 0`; Sam's assistant, the same client, still gets 200. The assistant's limit is keyed on `$consumer_name $http_x_harbor_sub`; a small `serverless-pre-function` (plugin config `person`) copies `sub` from the verified token into `X-Harbor-Sub`, overwriting any client value, and refuses tokens without `exp` or `sub`. A client-wide `limit-req` caps `/mcp`. APISIX's default rejection is 503; the consumers set 429.
+- `gateway-probes.out`: `Mcp-Name` sent base64-encoded (`=?base64?...?=`) and a legacy request with no `Mcp-*` headers both get 400 from route `mcp-unreadable` (anything but `MCP-Protocol-Version: 2026-07-28` with plain headers); the assistant's token on `/v0/books` gets 403; a token with no `exp` gets 401 at the gateway and at the gate.
+- `agent-host.out`, `audit.jsonl`, `trace.jsonl`, `gateway-access.jsonl`, `mcp-server.log`: the planted review `rev-004` (`planted-review.json`) arrives through `list_reviews`; the host flags it for the audit log, holds the stand-in's `cancel_order` (any write after any tool result is held, flagged or not; `must_hold()`), and the run then shows the gateway's 403 (route `mcp-write-tools`, an allowlist of read tools for every client but the storefront) and the MCP server's `insufficient_scope`. Audit records (arguments as an HMAC over tool and arguments, key `HARBOR_AUDIT_KEY`, placeholder default), spans (GenAI semantic conventions), and gateway log lines share one trace ID. The trace ID is caller-supplied; the gateway's log also carries its own `$request_id`, the consumer, and `sub`.
 - `backend.log`: Chapter 3's logger writes a forged `DELETE` line from a path with `%0A`; the gate's JSON line keeps the encoded path.
 - `inventory.out`: FastAPI's `/docs`, `/docs/oauth2-redirect`, `/openapi.json`, `/redoc` are served but not in the contract; `/v0/books/*` is deprecated and still called.
 
 ## Not production-ready
 
-- APISIX's `jwt-auth` checks signature and expiry, not `iss` or `aud`; the gate checks again.
+- APISIX's `jwt-auth` checks the signature, and `exp`/`nbf` only when present, never `iss` or `aud`; the gate checks again.
+- Every upstream here listens on 127.0.0.1 but still answers anything local; production binds or firewalls them to accept only the gateway.
+- FastAPI's docs routes stay on so the inventory finds them; turn them off in production.
 - The MCP server still calls Chapter 3's API on loopback without a token; production exchanges Rosa's token (Chapter 8) and gives each service an identity.
 - The host's pattern match is a tripwire for the audit log, not a defense.
 - The issuer has no login and its key sits on disk.

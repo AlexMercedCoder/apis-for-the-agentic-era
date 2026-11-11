@@ -4,8 +4,9 @@
     Harbor's MCP server calls it on the loopback address, as in Chapter 10.
   * 127.0.0.1:8111 is the same app behind a token gate, the upstream the
     gateway sends /books and /orders to. The gate checks the token again
-    (the gateway's jwt-auth plugin checks signature and expiry but not
-    issuer or audience), checks scopes, and enforces ownership: a token
+    (the gateway's jwt-auth plugin checks the signature, and exp and nbf
+    only when present; it never checks issuer or audience), requires
+    exp, iat, iss, aud, and sub, checks scopes, and enforces ownership: a token
     sees only its own customer's orders, and every other order gets the
     same 404 a missing one gets. Its log line is JSON, with the raw,
     still-encoded path, so a request can't forge a second log line.
@@ -32,6 +33,7 @@ import harbor_api  # noqa: E402  Chapter 3's app, unchanged
 ISSUER = "http://127.0.0.1:8110"
 AUDIENCE = "http://127.0.0.1:9080"
 JWKS = jwt.PyJWKClient(ISSUER + "/jwks")
+REQUIRED = ["exp", "iat", "iss", "aud", "sub"]    # Chapter 8's list
 
 harbor_api.store.reviews.append(
     json.loads((HERE / "planted-review.json").read_text()))
@@ -79,7 +81,8 @@ class Gate:
                 raise PermissionError(401, "not an access token")
             key = JWKS.get_signing_key_from_jwt(token).key
             claims = jwt.decode(token, key, algorithms=["RS256"],
-                                issuer=ISSUER, audience=AUDIENCE)
+                                issuer=ISSUER, audience=AUDIENCE,
+                                options={"require": REQUIRED})
         except jwt.PyJWTError:
             raise PermissionError(401, "invalid token") from None
         scope_needed = needs(scope["method"], scope["path"])

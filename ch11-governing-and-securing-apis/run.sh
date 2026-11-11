@@ -82,25 +82,49 @@ curl -s -i -H "Authorization: Bearer $STORE" $GW/v0/books/bk-1001 \
     $GW/orders/ord-5002
 } > "$OUT/bola.out"
 
-# 4. The agent's rate limit: 10 requests a minute, then 429.
+# 4. The per-person limit on MCP: 10 calls a minute for each person
+#    behind a client, then 429; another person behind the same client
+#    still gets through.
 call_book() {
   curl -s -D - -o /dev/null -X POST $GW/mcp \
-    -H "Authorization: Bearer $AGENT" -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
     -H 'Accept: application/json, text/event-stream' \
     -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' \
-    -H 'Mcp-Name: get_book' -d '{"jsonrpc": "2.0", "id": 1,
-      "method": "tools/call", "params": {"name": "get_book",
+    -H "Mcp-Name: ${2:-get_book}" -d '{"jsonrpc": "2.0", "id": 1,
+      "method": "tools/call", "params": {"name": "'"${3:-get_book}"'",
       "arguments": {"book_id": "bk-1001"}, "_meta": {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientCapabilities": {}}}}'
 }
+SAM=$(uv run -q python issuer.py mint harbor-assistant sub=sam \
+  customer_id=cus-002)
 codes=""
 for _ in $(seq 1 10); do
-  codes+="$(call_book | head -1 | cut -d' ' -f2) "
+  codes+="$(call_book "$AGENT" | head -1 | cut -d' ' -f2) "
 done
-echo "requests 1 to 10: $codes" > "$OUT/rate-limit.out"
-call_book | grep -iE '^(HTTP|x-ratelimit|content-type)' \
+echo "rosa's assistant, requests 1 to 10: $codes" > "$OUT/rate-limit.out"
+call_book "$AGENT" | grep -iE '^(HTTP|x-ratelimit)' \
   | tr -d '\r' >> "$OUT/rate-limit.out"
+echo "sam's assistant, same client, next request:" \
+  "$(call_book "$SAM" | head -1 | tr -d '\r')" >> "$OUT/rate-limit.out"
+
+# 4b. Probes against the gateway's rules.
+B64=$(printf cancel_order | base64)
+NOEXP=$(uv run -q python issuer.py mint harbor-storefront exp=)
+{ echo "cancel_order with Mcp-Name =?base64?...?=:" \
+    "$(call_book "$SAM" "=?base64?$B64?=" cancel_order | head -1 \
+       | tr -d '\r')"
+  echo "agent token on /v0/books: $(curl -s -o /dev/null -w '%{http_code}' \
+    -H "Authorization: Bearer $AGENT" $GW/v0/books/bk-1001)"
+  echo "storefront token with no exp: $(curl -s -w ' %{http_code}' \
+    -H "Authorization: Bearer $NOEXP" $GW/orders/ord-5003)"
+  echo "legacy request, no Mcp-* headers: $(curl -s -w ' %{http_code}' \
+    -X POST $GW/mcp -H "Authorization: Bearer $SAM" \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize"}')"
+  echo "the same token straight to the gate: $(curl -s -w ' %{http_code}' \
+    -H "Authorization: Bearer $NOEXP" http://127.0.0.1:8111/orders/ord-5003)"
+} > "$OUT/gateway-probes.out"
 reset=$(grep -i x-ratelimit-reset "$OUT/rate-limit.out" | awk '{print $2}')
 sleep "$(python3 -c "import math; print(math.ceil(float('$reset')) + 1)")"
 

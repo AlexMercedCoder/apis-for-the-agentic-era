@@ -7,4 +7,3 @@ X-RateLimit-Limit: 120
 X-RateLimit-Remaining: 119
 X-RateLimit-Reset: 60
 Server: APISIX/3.19.0
-X-Request-Id: fd4ac030-bb0d-47f0-9373-2d987f540016

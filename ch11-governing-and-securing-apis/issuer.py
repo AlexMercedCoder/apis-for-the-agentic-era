@@ -8,6 +8,8 @@ tokens each caller would have received. Never use it outside this demo.
 
     uv run python issuer.py serve                 # 127.0.0.1:8110
     uv run python issuer.py mint harbor-assistant # print one token
+    uv run python issuer.py mint harbor-assistant sub=sam customer_id=cus-002
+    uv run python issuer.py mint harbor-storefront exp=   # no exp (probe)
     uv run python issuer.py pem                   # the public key, PEM
 """
 
@@ -56,11 +58,13 @@ def public_pem():
         serialization.PublicFormat.SubjectPublicKeyInfo).decode()
 
 
-def mint(client, lifetime=300):
+def mint(client, lifetime=300, **override):
+    """Sign an access token for one client; override claims for probes."""
     now = int(time.time())
     claims = {"iss": ISSUER, "azp": client, "iat": now,
               "exp": now + lifetime, "jti": str(uuid.uuid4()),
-              **CLIENTS[client]}
+              **CLIENTS[client], **override}
+    claims = {k: v for k, v in claims.items() if v is not None}
     return jwt.encode(claims, private_key(), algorithm="RS256",
                       headers={"typ": "at+jwt", "kid": KID})
 
@@ -93,7 +97,8 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "serve"
     if cmd == "mint":
-        print(mint(sys.argv[2]))
+        extra = dict(arg.split("=", 1) for arg in sys.argv[3:])
+        print(mint(sys.argv[2], **{k: v or None for k, v in extra.items()}))
     elif cmd == "pem":
         print(public_pem(), end="")
     else:

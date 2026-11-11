@@ -21,6 +21,7 @@ record per decision to captures/audit.jsonl.
 
 import asyncio
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -45,8 +46,11 @@ OUT = Path(os.environ.get("OUT", "captures"))
 SESSION = f"s-{uuid.uuid4().hex[:8]}"
 READ_ONLY = {"search_catalog", "get_book", "list_reviews",
              "get_order_status", "get_cancellation"}
-# A tripwire, not a defense: it labels text that looks like instructions
-# so the audit trail shows where they entered. Attackers can reword.
+# A tripwire for the audit log, not a defense: it labels text that looks
+# like instructions so the trail shows where they entered. Attackers can
+# reword, so holding writes never depends on it (see must_hold()).
+AUDIT_KEY = os.environ.get("HARBOR_AUDIT_KEY",
+                           "not-a-real-audit-key").encode()
 SUSPECT = re.compile(r"(?i)\b(ai assistants?|ignore (all|previous)|"
                      r"do not ask|don't ask|system prompt|call \w+_\w+)")
 
@@ -79,9 +83,21 @@ def audit(**record):
         f.write(json.dumps(record) + "\n")
 
 
-def digest(args):
-    text = json.dumps(args, sort_keys=True).encode()
-    return "sha256:" + hashlib.sha256(text).hexdigest()[:16]
+def digest(name, args):
+    """Keyed digest of the tool and its arguments (HMAC-SHA256).
+
+    Matches identical calls without storing the arguments. It hides them
+    only from readers without the key, so keep the key out of the audit
+    store; a plain hash of an order ID can be reversed by guessing.
+    """
+    text = json.dumps([name, args], sort_keys=True).encode()
+    return "hmac:" + hmac.new(AUDIT_KEY, text, hashlib.sha256).hexdigest()[:16]
+
+
+def must_hold(name, context):
+    """Hold any write once any tool result is in the conversation."""
+    return name not in READ_ONLY and any(
+        item.get("role") == "tool" for item in context)
 
 
 async def add_traceparent(request):
@@ -129,7 +145,7 @@ async def call(client, name, args):
                 "gen_ai.agent.name": "harbor-assistant",
                 "gen_ai.conversation.id": SESSION}):
         result = await client.call_tool(name, args)
-        audit(event="tool_call", tool=name, args=digest(args),
+        audit(event="tool_call", tool=name, args=digest(name, args),
               decision="allowed", error=result.is_error)
         return result
 
@@ -158,24 +174,22 @@ async def main():
         items = json.loads(reviews.content[0].text)
         print(f"3. list_reviews bk-1003: {len(items)} reviews, "
               f"tagged untrusted")
-        tainted = False
         for review in items:
             context.append({"role": "tool", "source": "list_reviews",
                             "trust": "untrusted", "text": review["text"]})
             hit = SUSPECT.search(review["text"])
             if hit:
-                tainted = True
                 audit(event="untrusted_instruction", tool="list_reviews",
                       item=review["id"], matched=hit.group(0))
                 print(f"   {review['id']} flagged: {hit.group(0)!r}")
         for name, args in obedient_model(context):
             print(f"4. stand-in model proposes {name} {json.dumps(args)}")
-            if name not in READ_ONLY and tainted:
-                audit(event="tool_call", tool=name, args=digest(args),
+            if must_hold(name, context):
+                audit(event="tool_call", tool=name, args=digest(name, args),
                       decision="held_for_approval",
-                      reason="write after untrusted content")
+                      reason="write after a tool result")
                 print("   host: held for Rosa's approval (write after "
-                      "untrusted content)")
+                      "a tool result)")
             with tracer.start_as_current_span(
                     f"execute_tool {name}", attributes={
                         "gen_ai.operation.name": "execute_tool",
@@ -185,14 +199,15 @@ async def main():
                 gw = raw_call(GATEWAY_MCP, token, name, args)
                 print(f"5. host rule off, via gateway: {gw.status_code}\n"
                       f"   {gw.json()['message']}")
-                audit(event="tool_call", tool=name, args=digest(args),
+                audit(event="tool_call", tool=name, args=digest(name, args),
                       decision="refused_by_gateway", status=gw.status_code)
                 direct = raw_call(DIRECT_MCP, token, name, args)
-                challenge = direct.headers.get("www-authenticate", "")
-                audit(event="tool_call", tool=name, args=digest(args),
+                challenge = re.sub(r', resource_metadata=.*', '',
+                                   direct.headers.get("www-authenticate", ""))
+                audit(event="tool_call", tool=name, args=digest(name, args),
                       decision="refused_by_server", status=direct.status_code)
                 print(f"6. gateway rule off too, direct to the server: "
-                      f"{direct.status_code}\n   {challenge[:62]}")
+                      f"{direct.status_code}\n   {challenge}")
     print(f"audit records: {len(open(OUT / 'audit.jsonl').readlines())}")
 
 

@@ -1,0 +1,6 @@
+cancel_order with Mcp-Name =?base64?...?=: HTTP/1.1 400 Bad Request
+agent token on /v0/books: 403
+storefront token with no exp: {"message":"token must carry exp and sub"}
+ 401
+legacy request, no Mcp-* headers: MCP 2026-07-28 with plain Mcp-* headers only 400
+the same token straight to the gate: {"type": "about:blank", "status": 401, "title": "invalid token"} 401

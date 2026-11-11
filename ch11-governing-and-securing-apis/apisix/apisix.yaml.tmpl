@@ -1,6 +1,8 @@
-# Harbor's gateway: one consumer per caller type, known by the token's
-# azp claim, each with its own rate limit; routes for the REST API, the
-# MCP server, and one deprecated path. Rendered by render.py.
+# Harbor's gateway: one consumer per client application, known by the
+# token's azp claim. Storefront and partner limits are per client; the
+# assistant's is per person behind it, with a client-wide cap on /mcp;
+# routes for the REST API, the MCP server, and
+# one deprecated path. Rendered by render.py.
 consumers:
   - username: storefront
     plugins:
@@ -20,18 +22,37 @@ consumers:
                  public_key: "{PEM}"}
       limit-count: {count: 10, time_window: 60, rejected_code: 429,
                     rejected_msg: "rate limit exceeded",
-                    key_type: var, key: consumer_name}
+                    key_type: var_combination,
+                    key: "$consumer_name $http_x_harbor_sub"}
+plugin_configs:
+  - id: person
+    plugins:
+      serverless-pre-function:
+        phase: access
+        functions:
+          - |
+            return function(conf, ctx)
+              local core = require("apisix.core")
+              local p = ctx.jwt_auth_payload
+              if not p or not p.exp or not p.sub then
+                return 401, {message = "token must carry exp and sub"}
+              end
+              core.request.set_header(ctx, "X-Harbor-Sub", p.sub)
+            end
 routes:
   - id: harbor-rest
     uris: [/books, /books/*, /orders, /orders/*]
+    plugin_config_id: person
     plugins:
-      jwt-auth: {key_claim_name: azp}
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
       consumer-restriction: {whitelist: [storefront, partner]}
     upstream: {type: roundrobin, nodes: {"127.0.0.1:8111": 1}}
   - id: harbor-rest-v0
     uri: /v0/books/*
+    plugin_config_id: person
     plugins:
-      jwt-auth: {key_claim_name: azp}
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
+      consumer-restriction: {whitelist: [storefront, partner]}
       proxy-rewrite: {regex_uri: ["^/v0/books/(.*)", "/books/$1"]}
       response-rewrite:
         headers:
@@ -40,21 +61,38 @@ routes:
             Sunset: "Sat, 01 May 2027 00:00:00 GMT"
             Link: '<https://harbor.example/v0-end>; rel="deprecation"'
     upstream: {type: roundrobin, nodes: {"127.0.0.1:8111": 1}}
+  - id: mcp-unreadable
+    uri: /mcp
+    priority: 20
+    vars: [["OR",
+            ["http_mcp_protocol_version", "!", "==", "2026-07-28"],
+            ["http_mcp_method", "==", ""],
+            ["http_mcp_name", "~~", "^=\\?"]]]
+    plugins:
+      fault-injection:
+        abort: {http_status: 400,
+                body: "MCP 2026-07-28 with plain Mcp-* headers only"}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8010": 1}}
   - id: mcp-write-tools
     uri: /mcp
     priority: 10
     vars: [["http_mcp_method", "==", "tools/call"],
-           ["http_mcp_name", "in", ["place_order", "cancel_order"]]]
+           ["http_mcp_name", "!", "in", ["search_catalog", "get_book",
+            "list_reviews", "get_order_status", "get_cancellation"]]]
+    plugin_config_id: person
     plugins:
-      jwt-auth: {key_claim_name: azp}
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
       consumer-restriction:
-        blacklist: [assistant]
-        rejected_msg: "agent clients may not call write tools"
+        whitelist: [storefront]
+        rejected_msg: "this client may call read tools only"
     upstream: {type: roundrobin, nodes: {"127.0.0.1:8010": 1}}
   - id: mcp
     uri: /mcp
+    plugin_config_id: person
     plugins:
-      jwt-auth: {key_claim_name: azp}
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
+      limit-req: {rate: 20, burst: 20, rejected_code: 429,
+                  key_type: var, key: consumer_name}
     upstream: {type: roundrobin, nodes: {"127.0.0.1:8010": 1}}
   - id: mcp-metadata
     uri: /.well-known/oauth-protected-resource/mcp
@@ -62,14 +100,15 @@ routes:
 global_rules:
   - id: audit
     plugins:
-      request-id: {header_name: X-Request-Id}
       file-logger:
         path: /usr/local/apisix/logs/access.jsonl
         log_format:
           time: "$time_iso8601"
-          request_id: "$http_x_request_id"
+          gateway_request_id: "$request_id"
           traceparent: "$http_traceparent"
           consumer: "$consumer_name"
+          sub: "$http_x_harbor_sub"
+          mcp_version: "$http_mcp_protocol_version"
           method: "$request_method"
           uri: "$request_uri"
           mcp_method: "$http_mcp_method"
