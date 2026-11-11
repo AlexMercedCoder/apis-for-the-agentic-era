@@ -20,9 +20,11 @@ Two numbers per call:
 - wire bytes: everything the call put on the TCP connection, both
   directions, after the connection was open and warmed up by one call.
   For HTTP/1.1 that is the request and response, headers included. For
-  gRPC over HTTP/2 it is the call's own HEADERS and DATA frames (with
-  their 9-byte frame headers), not connection-level frames such as
-  SETTINGS, PING, or WINDOW_UPDATE.
+  gRPC over HTTP/2 it is every frame on the call's own stream (HEADERS,
+  DATA, and the stream's WINDOW_UPDATE, each with its 9-byte frame
+  header). Connection-level frames (stream 0: SETTINGS, PING, and
+  connection WINDOW_UPDATE) are shared by all calls; payload-sizes.json
+  reports their total and per-call share separately.
 
 Every HTTP/1.1 request goes out from one Python client (http.client)
 with only the headers its style requires. Response headers are each
@@ -240,17 +242,17 @@ def h2_frames(data, decoder, client_side):
 
 
 def stream_bytes(conn):
-    """Bytes per HTTP/2 stream, both directions, for HEADERS and DATA
-    frames only, plus a decoded log of every frame."""
-    per_stream, log = {}, []
+    """Bytes per HTTP/2 stream, both directions, for every frame on that
+    stream; stream 0 holds the connection-level frames and the preface.
+    Also returns a decoded log of every frame."""
+    per_stream, log = {0: len(PREFACE)}, []
     for key, client_side in (("c2s", True), ("s2c", False)):
         decoder = Decoder()
         for frame, headers, size in h2_frames(bytes(conn[key]), decoder,
                                               client_side):
             log.append((key, frame, headers, size))
-            if frame.type in (0x00, 0x01, 0x09) and frame.stream_id:
-                per_stream[frame.stream_id] = \
-                    per_stream.get(frame.stream_id, 0) + size
+            per_stream[frame.stream_id] = \
+                per_stream.get(frame.stream_id, 0) + size
     return per_stream, log
 
 
@@ -277,7 +279,7 @@ def measure_grpc(proxy, runs):
     time.sleep(0.2)
     conn, = proxy.conns
     per_stream, log = stream_bytes(conn)
-    ids = sorted(per_stream)[1:]  # stream 1 was the warm-up
+    ids = sorted(per_stream)[2:]  # stream 0 is the connection, 1 warm-up
     assert len(ids) == len(order), (len(ids), len(order))
     results = {}
     for name, _, _ in calls:
@@ -285,6 +287,8 @@ def measure_grpc(proxy, runs):
         results[name] = {"request_message": req, "response_message": resp,
                          "wire": [per_stream[i] for i, n in zip(ids, order)
                                   if n == name]}
+    results["connection"] = {"bytes": per_stream[0],
+                             "calls": len(order) + 1}
     return results, log, ids[order.index("PlaceOrder")]
 
 
@@ -361,8 +365,10 @@ def main():
         for p in procs:
             p.wait(timeout=10)
     rows = summarize(results, args.runs)
+    conn = results["gRPC"]["connection"]
     (out / "payload-sizes.json").write_text(json.dumps(
-        {"runs": args.runs, "rows": rows}, indent=2) + "\n")
+        {"runs": args.runs, "rows": rows,
+         "grpc_connection_frames": conn}, indent=2) + "\n")
     lines = [f"{'call':<15}{'style':<10}{'req msg':>8}{'resp msg':>9}"
              f"{'compact':>8}{'wire':>7}{'range':>12}"]
     for r in rows:
@@ -373,6 +379,9 @@ def main():
                      f"{r['response_compact'] or '':>8}"
                      f"{r['wire_median']:>7.0f}{rng:>12}")
     lines.append(f"runs per call: {args.runs}, after one warm-up call")
+    lines.append(f"gRPC connection-level frames: {conn['bytes']} bytes "
+                 f"over {conn['calls']} calls "
+                 f"({conn['bytes'] / conn['calls']:.0f} per call)")
     (out / "payload-sizes.txt").write_text("\n".join(lines) + "\n")
     (out / "grpc-frames.txt").write_text("\n".join(frame_log(log, sid))
                                          + "\n")

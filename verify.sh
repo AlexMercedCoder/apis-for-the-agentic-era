@@ -254,11 +254,11 @@ rows = {(r["call"], r["style"]): r
         for r in json.load(open(sys.argv[1]))["rows"]}
 want = {("GetOrderStatus", "SOAP"): (740, 466, 1520),
         ("GetOrderStatus", "REST"): (0, 388, 577),
-        ("GetOrderStatus", "gRPC"): (10, 28, 121),
+        ("GetOrderStatus", "gRPC"): (10, 28, 134),
         ("GetOrderStatus", "JSON-RPC"): (83, 147, 469),
         ("GetOrderStatus", "tRPC"): (0, 133, 432),
         ("PlaceOrder", "REST"): (134, 461, 919),
-        ("PlaceOrder", "gRPC"): (73, 69, 225),
+        ("PlaceOrder", "gRPC"): (73, 69, 238),
         ("PlaceOrder", "JSON-RPC"): (213, 298, 751),
         ("PlaceOrder", "tRPC"): (157, 284, 747)}
 for key, (req, resp, wire) in want.items():

@@ -1,11 +1,12 @@
 call           style      req msg resp msg compact   wire       range
 GetOrderStatus SOAP           740      466           1520        same
 GetOrderStatus REST             0      388     319    577        same
-GetOrderStatus gRPC            10       28            121     121-140
+GetOrderStatus gRPC            10       28            134     134-153
 GetOrderStatus JSON-RPC        83      147     147    469        same
 GetOrderStatus tRPC             0      133     133    432        same
 PlaceOrder     REST           134      461     383    919        same
-PlaceOrder     gRPC            73       69            225     225-273
+PlaceOrder     gRPC            73       69            238     238-286
 PlaceOrder     JSON-RPC       213      298     298    751        same
 PlaceOrder     tRPC           157      284     284    747        same
 runs per call: 20, after one warm-up call
+gRPC connection-level frames: 1429 bytes over 41 calls (35 per call)

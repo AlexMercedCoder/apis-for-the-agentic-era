@@ -18,7 +18,7 @@ server -> client  HEADERS  stream=43  length=3  flags=END_HEADERS
     grpc-accept-encoding: identity, deflate, gzip
 server -> client  DATA  stream=43  length=74  flags=-
     prefix: compressed=0 length=69
-    message: 0a 08 6f 72 64 2d 35 30 30 35 12 07 63 75 73 2d 30 30 31 18 01 22 06 08 c6 e5 cf d7 06 2a 0e 0a 07 62 6b 2d 31 30 30 32 10 01 18 af 09 2a 0e 0a 07 62 6b 2d 31 30 30 38 10 02 18 93 0a 30 d5 1d 3a 03 55 53 44
+    message: 0a 08 6f 72 64 2d 35 30 30 35 12 07 63 75 73 2d 30 30 31 18 01 22 06 08 85 ec cf d7 06 2a 0e 0a 07 62 6b 2d 31 30 30 32 10 01 18 af 09 2a 0e 0a 07 62 6b 2d 31 30 30 38 10 02 18 93 0a 30 d5 1d 3a 03 55 53 44
 server -> client  HEADERS  stream=43  length=16  flags=END_HEADERS,END_STREAM
     grpc-status: 0
     grpc-message: 

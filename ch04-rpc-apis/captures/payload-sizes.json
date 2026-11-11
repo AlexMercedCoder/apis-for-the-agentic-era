@@ -27,9 +27,9 @@
       "request_message": 10,
       "response_message": 28,
       "response_compact": null,
-      "wire_median": 121.0,
-      "wire_min": 121,
-      "wire_max": 140
+      "wire_median": 134.0,
+      "wire_min": 134,
+      "wire_max": 153
     },
     {
       "call": "GetOrderStatus",
@@ -67,9 +67,9 @@
       "request_message": 73,
       "response_message": 69,
       "response_compact": null,
-      "wire_median": 225.0,
-      "wire_min": 225,
-      "wire_max": 273
+      "wire_median": 238.0,
+      "wire_min": 238,
+      "wire_max": 286
     },
     {
       "call": "PlaceOrder",
@@ -91,5 +91,9 @@
       "wire_min": 747,
       "wire_max": 747
     }
-  ]
+  ],
+  "grpc_connection_frames": {
+    "bytes": 1429,
+    "calls": 41
+  }
 }

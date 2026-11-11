@@ -18,7 +18,9 @@ through all five styles of Chapters 2 to 4 and counts the bytes.
   `.ts` files directly.
 - `curl` (7.81.0 used)
 - [grpcurl](https://github.com/fullstorydev/grpcurl) 1.9.4:
-  `go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.4`.
+  `go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.4`. A
+  `go install` build prints `dev build` for `-version`; `go version -m
+  $(command -v grpcurl)` shows the module version.
   `run.sh` looks on `PATH`, then in `~/go/bin`, or set `GRPCURL`.
 
 No account and no API key. Nothing leaves `127.0.0.1`. Run it from inside
@@ -60,11 +62,11 @@ ord-5006: ORDER_STATUS_PLACED, 3797 cents
 call           style      req msg resp msg compact   wire       range
 GetOrderStatus SOAP           740      466           1520        same
 GetOrderStatus REST             0      388     319    577        same
-GetOrderStatus gRPC            10       28            121     121-140
+GetOrderStatus gRPC            10       28            134     134-153
 GetOrderStatus JSON-RPC        83      147     147    469        same
 GetOrderStatus tRPC             0      133     133    432        same
 PlaceOrder     REST           134      461     383    919        same
-PlaceOrder     gRPC            73       69            225     225-273
+PlaceOrder     gRPC            73       69            238     238-286
 PlaceOrder     JSON-RPC       213      298     298    751        same
 PlaceOrder     tRPC           157      284     284    747        same
 ```
@@ -72,8 +74,11 @@ PlaceOrder     tRPC           157      284     284    747        same
 Message bytes are the payload each style defines (the SOAP envelope, the JSON
 body, the JSON-RPC object, the protobuf message without gRPC's 5-byte prefix).
 Wire bytes are everything one call put on a warm TCP connection, both
-directions; for gRPC, the call's own HEADERS and DATA frames. Every HTTP/1.1
-request comes from one Python client with only the headers its style needs.
+directions; for gRPC, every frame on the call's own stream (HEADERS, DATA,
+and its WINDOW_UPDATE). The connection's shared frames (SETTINGS, PING,
+connection WINDOW_UPDATE) are reported separately, about 35 bytes per call. Every HTTP/1.1
+request comes from one Python client with only the headers its style needs;
+gRPC calls come from grpc-python with its default headers.
 
 ## Notes
 
