@@ -1,0 +1,23 @@
+tokenized card ****4242 as pm_a7f4c9190d7c874d
+charge pi_feaa6e7e4abdfb8b 3797 usd order=ord-5005
+conflict /v1/payment_intents: first request still running
+webhook payment_intent.succeeded pi_feaa6e7e4abdfb8b -> 204
+replayed /v1/payment_intents key=75e1fed7...
+charge pi_bec94fb6dde810d0 3797 usd order=demo-no-key
+charge pi_bea672b551e14c8d 3797 usd order=demo-no-key
+refused /v1/payment_intents: key reused with other parameters
+webhook payment_intent.succeeded pi_bea672b551e14c8d -> 204
+refund re_7f643f84cfd0f9bf 1299 on pi_feaa6e7e4abdfb8b
+replayed /v1/refunds key=5a98e6e7...
+webhook charge.refunded re_7f643f84cfd0f9bf -> 204
+webhook payment_intent.succeeded pi_bec94fb6dde810d0 -> 204
+vaulted card ****4242 as vt_515509e392fda5f9: max 2299 usd for harbor-books cs_7d2d98a699ca
+charge pi_ec15ce41e3aed58f 2299 usd order=ord-5006
+webhook payment_intent.succeeded pi_ec15ce41e3aed58f -> 204
+vaulted card ****4242 as vt_5c350866cc922072: max 2299 usd for harbor-books cs_a36a85b2815b
+refused vt_515509e392fda5f9: allowance already used (one_time)
+refused vt_5c350866cc922072: 2300 exceeds max_amount 2299
+refused vt_5c350866cc922072: allowance is for another checkout session
+refused vt_5c350866cc922072: allowance is for harbor-books, not other-shop
+charge pi_fec5c0ac8e47cbe7 2299 usd order=-
+webhook payment_intent.succeeded pi_fec5c0ac8e47cbe7 -> 204

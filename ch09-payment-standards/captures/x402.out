@@ -1,0 +1,4 @@
+first GET: 402, price 10000, budget 50000
+paid GET: 200 Call me Ishmael....
+same payment again: 402 invalid_transaction_state
+expiry moved after signing: 402 invalid_exact_evm_payload_signature

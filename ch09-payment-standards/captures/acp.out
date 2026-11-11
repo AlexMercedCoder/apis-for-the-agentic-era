@@ -1,0 +1,10 @@
+create session: 201 cs_7d2d98a699ca ready_for_payment total=2299
+host: 2299 <= Rosa's limit 3000, approved
+delegate_payment: 201 vt_515509e392fda5f9
+complete: 200 completed order=ord-5006
+misuse of delegated tokens:
+  same token, second charge         402 allowance already used (one_time)
+  seller charges 1 cent more        402 2300 exceeds max_amount 2299
+  token used on another session     402 allowance is for another checkout session
+  another seller's API key          402 allowance is for harbor-books, not other-shop
+  the right seller, amount, session 200 succeeded

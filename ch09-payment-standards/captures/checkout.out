@@ -1,0 +1,15 @@
+1. tokenize in the browser (publishable key)
+  pm_a7f4c9190d7c874d card ****4242; Harbor receives only the pm_ ID
+2. charge ord-5005 with one Idempotency-Key
+  attempt 1: timed out after 1.0 s
+  attempt 2: 409 idempotency_key_in_use replayed=false
+  attempt 3: 200 pi_feaa6e7e4abdfb8b replayed=true
+  ord-5005 at Harbor: paid
+3. the same lost response, no Idempotency-Key
+  attempt 1: timed out after 1.0 s
+  attempt 2: 200 pi_bea672b551e14c8d replayed=false
+4. the first key again, different amount
+  attempt 1: 400 idempotency_key_reused replayed=false
+5. refund one damaged Little Women copy, sent twice
+  attempt 1: 200 re_7f643f84cfd0f9bf replayed=false
+  attempt 2: 200 re_7f643f84cfd0f9bf replayed=true

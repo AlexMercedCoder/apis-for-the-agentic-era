@@ -1,0 +1,7 @@
+[OK]   acp-create-request.json is a valid CheckoutSessionCreateRequest
+[OK]   acp-create-response.json is a valid CheckoutSession
+[OK]   acp-complete-request.json is a valid CheckoutSessionCompleteRequest
+[OK]   acp-complete-response.json#session is a valid CheckoutSession
+[OK]   acp-complete-response.json#order is a valid Order
+[OK]   delegate-request.json is a valid DelegatePaymentRequest
+[OK]   delegate-response.json is a valid DelegatePaymentResponse

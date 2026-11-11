@@ -1,0 +1,41 @@
+GET /books/bk-1001/excerpt HTTP/1.1
+
+HTTP/1.1 402 Payment Required
+payment-required: <base64 of the JSON below>
+
+{
+  "x402Version": 2,
+  "error": "PAYMENT-SIGNATURE header is required",
+  "resource": {
+    "url": "http://127.0.0.1:8009/books/bk-1001/excerpt",
+    "description": "One chapter excerpt",
+    "mimeType": "application/json"
+  },
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0x8ed6F74e683C5170c9c740c447067c18043e95F1",
+      "maxTimeoutSeconds": 60,
+      "extra": {
+        "name": "USDC",
+        "version": "2"
+      }
+    }
+  ]
+}
+
+GET /books/bk-1001/excerpt HTTP/1.1
+payment-signature: <base64 of the signed payment>
+
+HTTP/1.1 200 OK
+payment-response: <base64 of the JSON below>
+
+{
+  "success": true,
+  "transaction": "",
+  "network": "eip155:84532",
+  "payer": "0xFE969C8b81249384484f825D01dC6fA97B01e6A7"
+}

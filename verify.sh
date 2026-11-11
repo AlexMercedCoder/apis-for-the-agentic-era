@@ -478,6 +478,45 @@ check "ch08: delegated token names Rosa and the assistant, bound by DPoP" \
 check "ch08: no unredacted token in any capture" \
   bash -c "! grep -rqE 'eyJ[A-Za-z0-9_-]{20,}' '$CH08' ch08-identity-standards/captures"
 
+# --- ch09: payment standards (stand-in provider, ACP, x402) -----------
+CH09="$TMP/ch09"
+check "ch09: run.sh completes" env OUT="$CH09" ch09-payment-standards/run.sh
+check "ch09: lost response retried with one key charges once; no key twice" \
+  bash -c "grep -q 'attempt 2: 409 idempotency_key_in_use' '$CH09/checkout.out' &&
+           grep -q 'attempt 3: 200 pi_[0-9a-f]* replayed=true' '$CH09/checkout.out' &&
+           [ \$(grep -c 'order=ord-5005' '$CH09/provider.log') -eq 1 ] &&
+           [ \$(grep -c 'order=demo-no-key' '$CH09/provider.log') -eq 2 ] &&
+           grep -q '400 idempotency_key_reused' '$CH09/checkout.out'"
+check "ch09: the order turns paid on the signed webhook; refund replayed once" \
+  bash -c "grep -q 'ord-5005 at Harbor: paid' '$CH09/checkout.out' &&
+           grep -q -- '-> ord-5005 paid' '$CH09/harbor.log' &&
+           [ \$(grep -c '^refund re_' '$CH09/provider.log') -eq 1 ] &&
+           grep -q 'attempt 2: 200 re_[0-9a-f]* replayed=true' '$CH09/checkout.out'"
+check "ch09: the card number never reaches Harbor" \
+  bash -c "! grep -rq '4242424242424242' '$CH09/harbor.log' '$CH09/charge.http'"
+check "ch09: ACP checkout completes; the allowance refuses misuse" \
+  bash -c "grep -q 'complete: 200 completed order=ord-5006' '$CH09/acp.out' &&
+           grep -q 'second charge         402 allowance already used' '$CH09/acp.out' &&
+           grep -q '402 2300 exceeds max_amount 2299' '$CH09/acp.out' &&
+           grep -q '402 allowance is for another checkout session' '$CH09/acp.out' &&
+           grep -q 'not other-shop' '$CH09/acp.out' &&
+           grep -q 'session 200 succeeded' '$CH09/acp.out'"
+check "ch09: ACP messages match the pinned 2026-04-17 schemas" \
+  bash -c "! grep -q FAIL '$CH09/contract.out' && [ \$(grep -c OK '$CH09/contract.out') -eq 7 ]"
+check "ch09: x402 pays once; replay and tampered payment refused" \
+  bash -c "grep -q 'first GET: 402, price 10000' '$CH09/x402.out' &&
+           grep -q 'paid GET: 200 Call me Ishmael' '$CH09/x402.out' &&
+           grep -q 'same payment again: 402 invalid_transaction_state' '$CH09/x402.out' &&
+           grep -q 'after signing: 402 invalid_exact_evm_payload_signature' '$CH09/x402.out'"
+check "ch09: x402 decodes the specification's own PAYMENT-REQUIRED example" \
+  bash -c "cd ch09-payment-standards && uv run -q python -c \"
+import x402_local
+h = 'eyJ4NDAyVmVyc2lvbiI6MiwiZXJyb3IiOiJQQVlNRU5ULVNJR05BVFVSRSBoZWFkZXIgaXMgcmVxdWlyZWQiLCJyZXNvdXJjZSI6eyJ1cmwiOiJodHRwczovL2FwaS5leGFtcGxlLmNvbS9wcmVtaXVtLWRhdGEiLCJkZXNjcmlwdGlvbiI6IkFjY2VzcyB0byBwcmVtaXVtIG1hcmtldCBkYXRhIiwibWltZVR5cGUiOiJhcHBsaWNhdGlvbi9qc29uIn0sImFjY2VwdHMiOlt7InNjaGVtZSI6ImV4YWN0IiwibmV0d29yayI6ImVpcDE1NTo4NDUzMiIsImFtb3VudCI6IjEwMDAwIiwiYXNzZXQiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJwYXlUbyI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiZXh0cmEiOnsibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fV19'
+d = x402_local.unb64(h)
+mine = x402_local.payment_required('u', '10000', 'e')
+assert d['x402Version'] == 2 and set(d['accepts'][0]) == set(mine['accepts'][0])
+\""
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

@@ -1,0 +1,12 @@
+{
+  "payment_data": {
+    "handler_id": "card",
+    "instrument": {
+      "type": "card",
+      "credential": {
+        "type": "vault_token",
+        "token": "vt_515509e392fda5f9"
+      }
+    }
+  }
+}

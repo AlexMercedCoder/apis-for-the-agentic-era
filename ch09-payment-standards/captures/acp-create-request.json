@@ -1,0 +1,12 @@
+{
+  "line_items": [
+    {
+      "id": "bk-1003"
+    }
+  ],
+  "currency": "usd",
+  "buyer": {
+    "email": "rosa@example.com"
+  },
+  "capabilities": {}
+}

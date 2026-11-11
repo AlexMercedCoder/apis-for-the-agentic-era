@@ -1,0 +1,71 @@
+{
+  "id": "cs_7d2d98a699ca",
+  "status": "completed",
+  "currency": "usd",
+  "line_items": [
+    {
+      "id": "li_1",
+      "item": {
+        "id": "bk-1003"
+      },
+      "quantity": 1,
+      "name": "Frankenstein",
+      "unit_amount": 2299,
+      "totals": [
+        {
+          "type": "total",
+          "display_text": "Total",
+          "amount": 2299
+        }
+      ]
+    }
+  ],
+  "totals": [
+    {
+      "type": "subtotal",
+      "display_text": "Subtotal",
+      "amount": 2299
+    },
+    {
+      "type": "total",
+      "display_text": "Total",
+      "amount": 2299
+    }
+  ],
+  "fulfillment_options": [],
+  "messages": [],
+  "links": [
+    {
+      "type": "return_policy",
+      "url": "https://harbor.example/returns"
+    }
+  ],
+  "capabilities": {
+    "payment": {
+      "handlers": [
+        {
+          "id": "card",
+          "name": "dev.acp.tokenized.card",
+          "version": "2026-04-17",
+          "spec": "https://harbor.example/acp/card-handler",
+          "requires_delegate_payment": true,
+          "requires_pci_compliance": false,
+          "psp": "harbor-test-psp",
+          "config_schema": "https://harbor.example/acp/config.json",
+          "instrument_schemas": [
+            "https://harbor.example/acp/card.json"
+          ],
+          "config": {
+            "merchant_id": "harbor-books"
+          }
+        }
+      ]
+    }
+  },
+  "order": {
+    "id": "ord-5006",
+    "checkout_session_id": "cs_7d2d98a699ca",
+    "permalink_url": "https://harbor.example/orders/ord-5006",
+    "status": "confirmed"
+  }
+}

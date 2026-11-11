@@ -1,0 +1,11 @@
+POST /v1/payment_intents HTTP/1.1
+Host: 127.0.0.1:8091
+Authorization: Bearer sk_test_not_a_real_key_harbor
+Content-Type: application/x-www-form-urlencoded
+Idempotency-Key: 75e1fed7-92c8-4919-b91a-5362ecb0b747
+
+amount=3797&
+currency=usd&
+payment_method=pm_a7f4c9190d7c874d&
+confirm=true&
+metadata%5Border_id%5D=ord-5005

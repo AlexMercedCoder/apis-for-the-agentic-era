@@ -1,0 +1,13 @@
+204 payment_intent.succeeded pi_feaa6e7e4abdfb8b -> ord-5005 paid
+204 payment_intent.succeeded pi_bea672b551e14c8d recorded
+204 charge.refunded re_7f643f84cfd0f9bf recorded
+204 payment_intent.succeeded pi_bec94fb6dde810d0 recorded
+201 checkout session cs_7d2d98a699ca bk-1003 2299 usd
+200 complete cs_7d2d98a699ca -> ord-5006 charged 2299 usd
+204 payment_intent.succeeded pi_ec15ce41e3aed58f -> ord-5006 paid
+201 checkout session cs_a36a85b2815b bk-1003 2299 usd
+204 payment_intent.succeeded pi_fec5c0ac8e47cbe7 recorded
+402 /books/bk-1001/excerpt no payment
+200 /books/bk-1001/excerpt paid 10000 by 0xFE969C8b81249384484f825D01dC6fA97B01e6A7
+402 /books/bk-1001/excerpt invalid_transaction_state
+402 /books/bk-1001/excerpt invalid_exact_evm_payload_signature
