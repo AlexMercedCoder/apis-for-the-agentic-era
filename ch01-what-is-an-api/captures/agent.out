@@ -46,7 +46,7 @@
   ],
   "stop_reason": "tool_use"
 }
---- tool_result sent back to the model
+--- tool_result to send back to the model
 {
   "type": "tool_result",
   "tool_use_id": "toolu_standin_0001",

@@ -3,7 +3,10 @@
 The script builds a request in the Anthropic Messages API format (tool
 definitions with name, description, and input_schema), gets back a response
 whose content holds a tool_use block, runs that tool call against the Harbor
-REST API, and prints the tool_result block it would send back to the model.
+REST API, and prints the tool_result block for the model. With --live it
+also sends that block back in a second request and prints the model's
+answer. The stand-in stops after the tool_result, because anything it
+printed as an answer would be invented.
 
 Two modes:
 
@@ -140,16 +143,27 @@ def main():
     response = model.create(request)
     show("response", response)
 
+    results = []
     for block in response["content"]:
         if block["type"] != "tool_use":
             continue
         result, is_error = run_tool(block["name"], block["input"])
-        show("tool_result sent back to the model", {
+        results.append({
             "type": "tool_result",
             "tool_use_id": block["id"],
             "content": json.dumps(result),
             "is_error": is_error,
         })
+    for result in results:
+        show("tool_result to send back to the model", result)
+
+    if args.live and results:
+        request["messages"] += [
+            {"role": "assistant", "content": response["content"]},
+            {"role": "user", "content": results},
+        ]
+        followup = model.create(request)
+        show("model's answer", followup)
 
 
 if __name__ == "__main__":
