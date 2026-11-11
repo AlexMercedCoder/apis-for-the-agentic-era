@@ -1,0 +1,16 @@
+*   Trying 127.0.0.1:8181...
+* Connected to 127.0.0.1 (127.0.0.1) port 8181 (#0)
+> GET /api/catalog/v1/config?warehouse=harbor HTTP/1.1
+> Host: 127.0.0.1:8181
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Authorization: Bearer <token>
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Content-Type: application/json;charset=UTF-8
+< content-length: 2233
+< X-Request-ID: 8b13585c-7204-42bf-a84b-05347e0d90a3_0000000000000000033
+< 
+{ [2233 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

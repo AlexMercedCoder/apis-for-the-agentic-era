@@ -1,0 +1,62 @@
+{
+  "request": "POST /api/catalog/v1/harbor/namespaces/harbor/tables/order_lines",
+  "headers": {
+    "x-iceberg-access-delegation": "vended-credentials",
+    "content-type": "application/json"
+  },
+  "body": {
+    "identifier": {
+      "namespace": [
+        "harbor"
+      ],
+      "name": "order_lines"
+    },
+    "requirements": [
+      {
+        "type": "assert-table-uuid",
+        "uuid": "5c406dc5-fd71-4f2c-868a-79263f7e1c7e"
+      },
+      {
+        "type": "assert-ref-snapshot-id",
+        "ref": "main",
+        "snapshot-id": 1070063223747273932
+      }
+    ],
+    "updates": [
+      {
+        "action": "add-snapshot",
+        "snapshot": {
+          "snapshot-id": 5687804402348246837,
+          "parent-snapshot-id": 1070063223747273932,
+          "sequence-number": 4,
+          "timestamp-ms": 1794380941327,
+          "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-5687804402348246837-0-f54c1c20-fdc1-4b13-9122-02bbdcf2c580.avro",
+          "summary": {
+            "operation": "append",
+            "added-files-size": "3058",
+            "added-data-files": "1",
+            "added-records": "1",
+            "total-data-files": "4",
+            "total-delete-files": "0",
+            "total-records": "6665",
+            "total-files-size": "69031",
+            "total-position-deletes": "0",
+            "total-equality-deletes": "0"
+          },
+          "schema-id": 0
+        }
+      },
+      {
+        "action": "set-snapshot-ref",
+        "ref-name": "main",
+        "type": "branch",
+        "snapshot-id": 5687804402348246837
+      }
+    ]
+  },
+  "status": 200,
+  "response": {
+    "metadata-location": "s3://harbor-lake/harbor/order_lines/metadata/00004-9580315f-0a8f-4408-8399-2dae371e1aa2.metadata.json",
+    "metadata": "..."
+  }
+}

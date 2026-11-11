@@ -1,0 +1,234 @@
+{
+    "metadata-location": "s3://harbor-lake/harbor/order_lines/metadata/00004-9580315f-0a8f-4408-8399-2dae371e1aa2.metadata.json",
+    "metadata": {
+        "format-version": 2,
+        "table-uuid": "5c406dc5-fd71-4f2c-868a-79263f7e1c7e",
+        "location": "s3://harbor-lake/harbor/order_lines",
+        "last-sequence-number": 4,
+        "last-updated-ms": 1794380941341,
+        "last-column-id": 8,
+        "current-schema-id": 0,
+        "schemas": [
+            {
+                "type": "struct",
+                "schema-id": 0,
+                "fields": [
+                    {
+                        "id": 1,
+                        "name": "order_id",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "id": 2,
+                        "name": "customer_id",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "id": 3,
+                        "name": "placed_at",
+                        "required": true,
+                        "type": "timestamptz"
+                    },
+                    {
+                        "id": 4,
+                        "name": "status",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "id": 5,
+                        "name": "book_id",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "id": 6,
+                        "name": "quantity",
+                        "required": true,
+                        "type": "int"
+                    },
+                    {
+                        "id": 7,
+                        "name": "unit_price_cents",
+                        "required": true,
+                        "type": "long"
+                    },
+                    {
+                        "id": 8,
+                        "name": "currency",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        ],
+        "default-spec-id": 0,
+        "partition-specs": [
+            {
+                "spec-id": 0,
+                "fields": []
+            }
+        ],
+        "last-partition-id": 999,
+        "default-sort-order-id": 0,
+        "sort-orders": [
+            {
+                "order-id": 0,
+                "fields": []
+            }
+        ],
+        "properties": {
+            "created-at": "2026-11-11T07:07:20.647801504Z",
+            "write.parquet.compression-codec": "zstd"
+        },
+        "current-snapshot-id": 5687804402348246837,
+        "refs": {
+            "main": {
+                "snapshot-id": 5687804402348246837,
+                "type": "branch"
+            }
+        },
+        "snapshots": [
+            {
+                "sequence-number": 1,
+                "snapshot-id": 5158995254800868855,
+                "timestamp-ms": 1794380863558,
+                "summary": {
+                    "operation": "append",
+                    "added-files-size": "59693",
+                    "added-data-files": "1",
+                    "added-records": "6656",
+                    "total-data-files": "1",
+                    "total-delete-files": "0",
+                    "total-records": "6656",
+                    "total-files-size": "59693",
+                    "total-position-deletes": "0",
+                    "total-equality-deletes": "0"
+                },
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-5158995254800868855-0-cf32ef45-a046-46bd-bb3e-2bb023e21ca7.avro",
+                "schema-id": 0
+            },
+            {
+                "sequence-number": 2,
+                "snapshot-id": 294802231122253903,
+                "parent-snapshot-id": 5158995254800868855,
+                "timestamp-ms": 1794380887734,
+                "summary": {
+                    "operation": "append",
+                    "added-files-size": "3199",
+                    "added-data-files": "1",
+                    "added-records": "6",
+                    "total-data-files": "2",
+                    "total-delete-files": "0",
+                    "total-records": "6662",
+                    "total-files-size": "62892",
+                    "total-position-deletes": "0",
+                    "total-equality-deletes": "0"
+                },
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-294802231122253903-0-ec7f2b98-7133-4bfd-96ce-2d4c1280bf8c.avro",
+                "schema-id": 0
+            },
+            {
+                "sequence-number": 3,
+                "snapshot-id": 1070063223747273932,
+                "parent-snapshot-id": 294802231122253903,
+                "timestamp-ms": 1794380902887,
+                "summary": {
+                    "operation": "append",
+                    "added-files-size": "3081",
+                    "added-data-files": "1",
+                    "added-records": "2",
+                    "total-data-files": "3",
+                    "total-delete-files": "0",
+                    "total-records": "6664",
+                    "total-files-size": "65973",
+                    "total-position-deletes": "0",
+                    "total-equality-deletes": "0"
+                },
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-1070063223747273932-0-1daf4c9b-f845-4225-bb80-bac0ce3dd1fd.avro",
+                "schema-id": 0
+            },
+            {
+                "sequence-number": 4,
+                "snapshot-id": 5687804402348246837,
+                "parent-snapshot-id": 1070063223747273932,
+                "timestamp-ms": 1794380941327,
+                "summary": {
+                    "operation": "append",
+                    "added-files-size": "3058",
+                    "added-data-files": "1",
+                    "added-records": "1",
+                    "total-data-files": "4",
+                    "total-delete-files": "0",
+                    "total-records": "6665",
+                    "total-files-size": "69031",
+                    "total-position-deletes": "0",
+                    "total-equality-deletes": "0"
+                },
+                "manifest-list": "s3://harbor-lake/harbor/order_lines/metadata/snap-5687804402348246837-0-f54c1c20-fdc1-4b13-9122-02bbdcf2c580.avro",
+                "schema-id": 0
+            }
+        ],
+        "statistics": [],
+        "partition-statistics": [],
+        "snapshot-log": [
+            {
+                "timestamp-ms": 1794380863558,
+                "snapshot-id": 5158995254800868855
+            },
+            {
+                "timestamp-ms": 1794380887734,
+                "snapshot-id": 294802231122253903
+            },
+            {
+                "timestamp-ms": 1794380902887,
+                "snapshot-id": 1070063223747273932
+            },
+            {
+                "timestamp-ms": 1794380941327,
+                "snapshot-id": 5687804402348246837
+            }
+        ],
+        "metadata-log": [
+            {
+                "timestamp-ms": 1794380840667,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00000-54c7a4d4-0c22-43e7-839c-477fec7da86c.metadata.json"
+            },
+            {
+                "timestamp-ms": 1794380863910,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00001-fed6f4a5-8123-4258-b8b2-dfc095960ef5.metadata.json"
+            },
+            {
+                "timestamp-ms": 1794380887775,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00002-416c908d-575f-4e8e-96c0-e01600f81415.metadata.json"
+            },
+            {
+                "timestamp-ms": 1794380902936,
+                "metadata-file": "s3://harbor-lake/harbor/order_lines/metadata/00003-99e8b645-0b13-4066-9916-1ca2f62840e4.metadata.json"
+            }
+        ]
+    },
+    "config": {
+        "s3.path-style-access": "true",
+        "s3.access-key-id": "<s3.access-key-id>",
+        "s3.secret-access-key": "<s3.secret-access-key>",
+        "s3.session-token": "<s3.session-token>",
+        "client.refresh-credentials-endpoint": "v1/harbor/namespaces/harbor/tables/order_lines/credentials",
+        "s3.endpoint": "http://127.0.0.1:9000",
+        "s3.session-token-expires-at-ms": "1794384447000",
+        "client.region": "us-east-1"
+    },
+    "storage-credentials": [
+        {
+            "prefix": "s3://harbor-lake/harbor/order_lines",
+            "config": {
+                "s3.access-key-id": "<s3.access-key-id>",
+                "s3.secret-access-key": "<s3.secret-access-key>",
+                "s3.session-token": "<s3.session-token>",
+                "s3.session-token-expires-at-ms": "1794384447000"
+            }
+        }
+    ]
+}

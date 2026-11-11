@@ -1,0 +1,11 @@
+GetFlightInfo command: type.googleapis.com/arrow.flight.protocol.sql.CommandStatementQuery
+schema:
+  order_id: string
+  placed_at: timestamp[us, tz=UTC]
+  book_id: string
+  quantity: int32
+  unit_price_cents: int64
+total_records: 2916  total_bytes: 127213
+endpoint: ['grpc://127.0.0.1:8071'] ticket: 88 bytes
+DoGet batch 1: 2048 rows
+DoGet batch 2: 868 rows

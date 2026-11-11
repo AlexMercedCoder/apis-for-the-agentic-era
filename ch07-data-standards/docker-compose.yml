@@ -1,0 +1,47 @@
+# Chapter 7: an Iceberg REST catalog (Apache Polaris) over an
+# S3-compatible object store (RustFS), both on 127.0.0.1 only.
+# Every credential below is a placeholder for this local stack.
+name: harbor-ch07
+
+services:
+  rustfs:
+    image: rustfs/rustfs:1.0.5
+    environment:
+      RUSTFS_ACCESS_KEY: harbor-admin
+      RUSTFS_SECRET_KEY: not-a-real-secret
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+    ports:
+      - "127.0.0.1:9000:9000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - rustfs_data:/data
+
+  polaris:
+    image: apache/polaris:1.8.0
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8181:8181"
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: harbor-admin
+      AWS_SECRET_ACCESS_KEY: not-a-real-secret
+      POLARIS_BOOTSTRAP_CREDENTIALS: "POLARIS,root,not-a-real-secret"
+      polaris.realm-context.realms: POLARIS
+      quarkus.otel.sdk.disabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 60
+
+volumes:
+  rustfs_data:

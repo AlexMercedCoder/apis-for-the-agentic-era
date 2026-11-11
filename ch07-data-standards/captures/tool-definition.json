@@ -1,0 +1,21 @@
+{
+  "name": "sales_by_book",
+  "description": "Copies sold and revenue in cents per Harbor book between two dates (start inclusive, end exclusive), cancelled orders excluded. Read-only; returns at most one row per book.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "start": {
+        "type": "string",
+        "format": "date"
+      },
+      "end": {
+        "type": "string",
+        "format": "date"
+      }
+    },
+    "required": [
+      "start",
+      "end"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+load table: ok, 6665 rows read
+commit refused by the catalog:
+  ForbiddenException: Principal 'analytics-agent' with activated
+  PrincipalRoles '[analytics_agent_role]' and activated grants via
+  '[analytics_agent_role, order_history_reader]' is not authorized
+  for op ADD_TABLE_SCHEMA
+write with the vended credentials refused by the store:
+  AWS Error ACCESS_DENIED during CreateMultipartUpload

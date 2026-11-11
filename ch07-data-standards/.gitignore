@@ -1,0 +1,3 @@
+.venv/
+gen/
+agent-credentials.json

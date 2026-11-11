@@ -1,0 +1,2 @@
+tool result: 512 bytes of JSON, 8 rows
+raw lines:   874 rows, 173,831 bytes of JSON, 65,808 bytes as Arrow IPC

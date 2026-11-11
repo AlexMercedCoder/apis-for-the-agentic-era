@@ -2,7 +2,7 @@
 # Runs every example in this repository that needs no network access
 # beyond 127.0.0.1 and no API keys, and checks the output the book prints.
 # Usage: ./verify.sh    (needs bash, curl, uv; Chapters 4 and 6 also need
-# Node 24, and Chapter 4 needs grpcurl 1.9.4)
+# Node 24, Chapter 4 needs grpcurl 1.9.4, and Chapter 7 needs Docker)
 set -uo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
@@ -392,6 +392,45 @@ check "ch06: WebSocket upgrade, masked client frames, close 1000" \
            grep -qx 'client -> server  FIN=1 opcode=0x1 (text) MASK=1 len=38' '$CH06/websocket.out' &&
            grep -q 'server -> client  FIN=1 opcode=0x1 (text) MASK=0 len=98' '$CH06/websocket.out' &&
            [ \"\$(grep -c 'close code 1000' '$CH06/websocket.out')\" -eq 2 ]"
+
+# --- Chapter 7 ---------------------------------------------------------
+# Needs Docker with Compose v2 (images apache/polaris:1.8.0 and
+# rustfs/rustfs:1.0.5); takes about three minutes.
+CH07="$TMP/ch07"
+check "ch07: run.sh completes" env OUT="$CH07" ch07-data-standards/run.sh
+check "ch07: catalog config names the harbor prefix and lists endpoints" \
+  python3 -c "
+import json, sys
+d = json.load(open('$CH07/config.json'))
+assert d['overrides']['prefix'] == 'harbor'
+assert 'POST /v1/{prefix}/namespaces/{namespace}/tables/{table}' in d['endpoints']"
+check "ch07: load table vends table-scoped credentials, secrets redacted" \
+  bash -c "grep -q '> X-Iceberg-Access-Delegation: vended-credentials' '$CH07/load-table.err' &&
+           grep -q '\"s3.session-token\": \"<s3.session-token>\"' '$CH07/load-table.json' &&
+           grep -q 'tables/order_lines/credentials' '$CH07/load-table.json' &&
+           ! grep -rqE 'Bearer [A-Za-z0-9._-]{12,}' '$CH07'"
+check "ch07: history loads in two commits (6,656 and 6 lines)" \
+  bash -c "grep -q ' append 6656 rows$' '$CH07/load.out' && grep -q ' append 6 rows$' '$CH07/load.out'"
+check "ch07: stale commit gets 409 with assert-ref-snapshot-id, then retries" \
+  bash -c "grep -q '409  /api/catalog/v1/harbor/namespaces/harbor/tables/order_lines' '$CH07/commits.out' &&
+           grep -q 'Requirement failed: branch main has changed' '$CH07/commit-4.json' &&
+           grep -q '\"type\": \"assert-ref-snapshot-id\"' '$CH07/commit-4.json' &&
+           grep -q 'retrying (1/4)' '$CH07/conflict.out' &&
+           grep -q '^writer B committed snapshot' '$CH07/conflict.out'"
+check "ch07: Flight SQL query returns 2,916 rows in batches of 2,048 and 868" \
+  bash -c "grep -qx 'total_records: 2916  total_bytes: 127213' '$CH07/flight-client.out' &&
+           grep -qx 'DoGet batch 1: 2048 rows' '$CH07/flight-client.out' &&
+           grep -qx 'DoGet batch 2: 868 rows' '$CH07/flight-client.out'"
+check "ch07: ADBC aggregate returns 8 books, bk-1003 first" \
+  bash -c "grep -qx 'Table 8 rows' '$CH07/adbc-client.out' &&
+           grep -qx 'bk-1003   153    351747' '$CH07/adbc-client.out'"
+check "ch07: agent tool result is 512 bytes against 173,831 of raw JSON" \
+  bash -c "grep -qx 'tool result: 512 bytes of JSON, 8 rows' '$CH07/agent-tool.out' &&
+           grep -qx 'raw lines:   874 rows, 173,831 bytes of JSON, 65,808 bytes as Arrow IPC' '$CH07/agent-tool.out'"
+check "ch07: agent principal reads, catalog and store refuse its writes" \
+  bash -c "grep -qx 'load table: ok, 6665 rows read' '$CH07/agent-access.out' &&
+           grep -q 'is not authorized' '$CH07/agent-access.out' &&
+           grep -q 'ACCESS_DENIED' '$CH07/agent-access.out'"
 
 echo
 echo "$PASS passed, $FAIL failed"
