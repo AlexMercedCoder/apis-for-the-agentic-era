@@ -3,9 +3,11 @@ the generated history first, then the four orders from harbor-data.
 Also create harbor.customers from harbor-data, a table the analytics
 agent is not granted."""
 import json
+import time
 from pathlib import Path
 
 import pyarrow as pa
+from pyiceberg.exceptions import BadRequestError
 from pyiceberg.io.pyarrow import pyarrow_to_schema
 from pyiceberg.table.name_mapping import MappedField, NameMapping
 
@@ -16,9 +18,15 @@ catalog = open_catalog()
 catalog.create_namespace_if_not_exists("harbor")
 mapping = NameMapping([MappedField(field_id=i, names=[name]) for i, name
                        in enumerate(order_history.SCHEMA.names, 1)])
-table = catalog.create_table(
-    "harbor.order_lines",
-    schema=pyarrow_to_schema(order_history.SCHEMA, name_mapping=mapping))
+schema = pyarrow_to_schema(order_history.SCHEMA, name_mapping=mapping)
+for attempt in range(5):
+    try:
+        table = catalog.create_table("harbor.order_lines", schema=schema)
+        break
+    except BadRequestError as err:  # a just-created bucket not yet visible
+        if "NoSuchBucket" not in str(err) or attempt == 4:
+            raise
+        time.sleep(2)
 history = order_history.table()
 seed_rows = 6  # the four orders in harbor-data have six lines
 table.append(history.slice(0, history.num_rows - seed_rows))

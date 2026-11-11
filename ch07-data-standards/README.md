@@ -1,4 +1,4 @@
-# Chapter 7: Data Standards: The Iceberg REST Catalog and Arrow Flight
+# Chapter 7: Data Standards with the Iceberg REST Catalog and Arrow Flight
 
 Harbor Books' order history as an Apache Iceberg table, `harbor.order_lines`,
 behind an Iceberg REST catalog (Apache Polaris) over an S3-compatible object

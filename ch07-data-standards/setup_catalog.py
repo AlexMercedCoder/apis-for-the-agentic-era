@@ -9,6 +9,7 @@ for the local stack in docker-compose.yml. Prints the agent principal's
 client ID and secret to agent-credentials.json (git-ignored).
 """
 import json
+import time
 from pathlib import Path
 
 import httpx
@@ -44,6 +45,14 @@ def main():
                          allow_bucket_creation=True)
     if s3.get_file_info("harbor-lake").type == fs.FileType.NotFound:
         s3.create_dir("harbor-lake")
+    # A new bucket can take a moment to become visible; wait for it so
+    # the catalog's first write doesn't get NoSuchBucket.
+    for _ in range(60):
+        if s3.get_file_info("harbor-lake").type == fs.FileType.Directory:
+            break
+        time.sleep(0.5)
+    else:
+        raise SystemExit("bucket harbor-lake never became visible")
     tok = token(*ROOT)
     call("POST", "/catalogs", tok, {"catalog": {
         "name": "harbor", "type": "INTERNAL",
