@@ -329,7 +329,12 @@ PY
 check "ch05: curated tools from trusted documents, place_order asks first" \
   bash -c "grep -q '^  place_order      sha256:90fda13f8339...  ask first$' '$CH05/tools.out' &&
            grep -q '^  order_screen     sha256:50d69ec78f7e...$' '$CH05/tools.out' &&
-           grep -q '^  run_graphql      depth <= 6, cost <= 1000$' '$CH05/tools.out'"
+           grep -q '^  run_graphql      queries only, depth <= 6, cost <= 1000$' '$CH05/tools.out'"
+check "ch05: run_graphql's host check refuses a mutation, and tool sizes match" \
+  bash -c "grep -qx 'not sent: run_graphql runs queries only, and this document holds a mutation' '$CH05/check-mutation.out' &&
+           grep -qx 'sent: queries only' '$CH05/check-query.out' &&
+           grep -q 'schema.graphql (SDL)         1,699 bytes' '$CH05/tool-sizes.out' &&
+           grep -q 'three curated tools (JSON)   1,063 bytes' '$CH05/tool-sizes.out'"
 
 echo
 echo "$PASS passed, $FAIL failed"

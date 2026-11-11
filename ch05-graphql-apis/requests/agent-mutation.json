@@ -1,0 +1,1 @@
+{"query": "mutation { placeOrder(input: {customerId: \"cus-001\", lines: [{bookId: \"bk-1004\", quantity: 1}], requestId: \"0b7e4c1d-5a2f-4c3e-9d8b-7a6f5e4d3c2b\"}) { id } }"}

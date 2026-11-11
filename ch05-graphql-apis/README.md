@@ -37,8 +37,8 @@ starts `../ch03-rest-apis/` on port 8003.
 | `body.py` | prints a request body for one operation, with `--id` to send the document ID |
 | `introspect.py` | reads the schema from the running server and compares it with `schema.graphql` |
 | `measure.py` | the order screen over REST (five `GET`s) and GraphQL (one `POST`, as text and as a document ID) |
-| `graphql_tools.py` | agent tools (Messages API format): one curated tool per trusted document, and the generic `run_graphql` |
-| `requests/*.json` | hand-written request bodies (partial error, typo, too deep, too costly, introspection) |
+| `graphql_tools.py` | agent tools (Messages API format): one curated tool per trusted document, and the generic `run_graphql`; `--check DOC` runs the host's read-only check (only `query` operations are sent), `--sizes` prints the bytes a model reads for each design |
+| `requests/*.json` | hand-written request bodies (partial error, typo, too deep, too costly, introspection, a mutation for the read-only check) |
 | `run.sh` | starts the server in four configurations, runs every listing, writes `captures/` |
 
 ## What the server does
@@ -67,6 +67,10 @@ Each request logs one line to stderr with its back-end calls, such as
 reviews_for=8` with `--no-loaders` and `backend_calls=2 list_books=1
 reviews_for_many=1` with the default DataLoaders.
 
+Note that `run.sh` rewrites `schema.graphql` and `trusted-documents.json`
+in place before it runs anything, so run it on a clean tree and review any
+diff it leaves.
+
 ## Run it by hand
 
 ```bash
@@ -78,6 +82,8 @@ curl -s -X POST http://127.0.0.1:8005/graphql \
   -H 'Content-Type: application/json' --data-binary @requests/partial.json
 uv run python introspect.py
 uv run python graphql_tools.py
+uv run python graphql_tools.py --sizes
+uv run python graphql_tools.py --check 'mutation { placeOrder(input: {customerId: "cus-001", lines: [], requestId: "x"}) { id } }'
 uv run python limits.py operations/*.graphql
 ```
 

@@ -3,13 +3,16 @@
     uv run python graphql_tools.py               list both designs
     uv run python graphql_tools.py order_screen  print one curated tool
     uv run python graphql_tools.py run_graphql   print the generic tool
+    uv run python graphql_tools.py --check DOC   run the host's read-only check
+    uv run python graphql_tools.py --sizes       bytes a model reads per design
 
 Curated tools come from the trusted documents in operations/: one tool per
 operation, named after it, described by its leading comment, with an input
 schema built from its variables and the pinned schema.graphql. The host
 sends the document ID, never text the model wrote. The generic tool takes
-any query the model writes, which the server's depth and cost limits then
-have to bound. Tools use the Messages API format of Chapters 1 to 4.
+any query the model writes; the host refuses any document that holds an
+operation other than a query, and the server's depth and cost limits bound
+the rest. Tools use the Messages API format of Chapters 1 to 4.
 """
 
 import hashlib
@@ -20,6 +23,7 @@ from pathlib import Path
 
 from graphql import (
     GraphQLEnumType, GraphQLInputObjectType, GraphQLList, GraphQLNonNull,
+    GraphQLSyntaxError,
     OperationDefinitionNode, build_schema, parse, type_from_ast,
 )
 
@@ -79,8 +83,9 @@ def curated_tools() -> list[dict]:
 
 GENERIC = {
     "name": "run_graphql",
-    "description": "Run one GraphQL query against Harbor's storefront API. "
-                   "Read the schema first with an introspection query. "
+    "description": "Run one read-only GraphQL query against Harbor's "
+                   "storefront API. Read the schema first with an "
+                   "introspection query. Mutations are refused. "
                    "Queries deeper than 6 levels or costlier than 1000 "
                    "are refused.",
     "input_schema": {
@@ -95,8 +100,35 @@ GENERIC = {
 }
 
 
+def check_read_only(document: str) -> str | None:
+    """The host's guard for run_graphql: None if every operation is a
+    query, otherwise the reason it refuses to send the document."""
+    try:
+        ops = [d for d in parse(document).definitions
+               if isinstance(d, OperationDefinitionNode)]
+    except GraphQLSyntaxError as err:
+        return f"not sent: {err.message}"
+    for op in ops:
+        if op.operation.value != "query":
+            return (f"not sent: run_graphql runs queries only, and this "
+                    f"document holds a {op.operation.value}")
+    return None
+
+
 def main() -> None:
+    if sys.argv[1:2] == ["--check"]:
+        print(check_read_only(sys.argv[2]) or "sent: queries only")
+        return
     tools = curated_tools()
+    if sys.argv[1:2] == ["--sizes"]:
+        shown = [{k: v for k, v in t.items()
+                  if k in ("name", "description", "input_schema")}
+                 for t in tools]
+        sdl = len((HERE / "schema.graphql").read_bytes())
+        print(f"schema.graphql (SDL)        {sdl:>6,} bytes")
+        print(f"three curated tools (JSON)  {len(json.dumps(shown)):>6,} bytes")
+        print(f"run_graphql tool (JSON)     {len(json.dumps(GENERIC)):>6,} bytes")
+        return
     if len(sys.argv) > 1:
         wanted = sys.argv[1]
         tool = GENERIC if wanted == "run_graphql" else next(
@@ -110,7 +142,7 @@ def main() -> None:
         flag = "ask first" if t["needs_approval"] else ""
         print(f"  {t['name']:16} {t['document_id'][:19]}...  {flag}".rstrip())
     print("generic: one tool for any query")
-    print(f"  {GENERIC['name']:16} depth <= 6, cost <= 1000")
+    print(f"  {GENERIC['name']:16} queries only, depth <= 6, cost <= 1000")
 
 
 if __name__ == "__main__":

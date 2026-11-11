@@ -3,4 +3,4 @@ curated: one tool per trusted document
   order_screen     sha256:50d69ec78f7e...
   place_order      sha256:90fda13f8339...  ask first
 generic: one tool for any query
-  run_graphql      depth <= 6, cost <= 1000
+  run_graphql      queries only, depth <= 6, cost <= 1000
