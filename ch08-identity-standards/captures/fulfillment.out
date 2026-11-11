@@ -19,10 +19,10 @@ content-type: application/json
 }
 {
   "aud": "http://127.0.0.1:8008",
-  "sub": "22122426-63a4-4f14-ae4e-9aaea6e40ec7",
+  "sub": "4d02da77-3b1d-4055-a25c-a2ccb49dc204",
   "azp": "harbor-fulfillment",
   "scope": "orders:read:all"
 }
 
 GET /orders/ord-5002: 200 cus-002 shipped
-PUT /orders/ord-5002/cancellation: 403 PUT /orders/ord-5002/cancellation needs orders:write
+PUT /orders/ord-5002/cancellation: 403 needs orders:write

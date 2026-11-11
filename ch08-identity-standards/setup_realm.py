@@ -112,7 +112,9 @@ def main():
          "secret": SECRET, "standardFlowEnabled": False,
          "directAccessGrantsEnabled": False,
          "serviceAccountsEnabled": True,
-         "attributes": {"standard.token.exchange.enabled": "true"}},
+         "attributes": {"standard.token.exchange.enabled": "true",
+                        # every token for the assistant must be DPoP-bound
+                        "dpop.bound.access.tokens": "true"}},
     ]
     ids = {}
     for body in clients:

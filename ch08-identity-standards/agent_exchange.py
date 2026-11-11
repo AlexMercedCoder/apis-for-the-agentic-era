@@ -69,11 +69,19 @@ def main():
 
     print("== 1. the assistant's own token (client credentials)")
     actor = httpx.post(token_url, data={"grant_type": "client_credentials"},
+                       headers={"DPoP": key.proof("POST", token_url)},
                        auth=("harbor-assistant", SECRET))
     print(show(actor))
     actor = actor.raise_for_status().json()["access_token"]
 
     print("\n== 2. token exchange: Rosa's grant in, a delegated token out")
+    form = {"grant_type": EXCHANGE, "subject_token": grant,
+            "subject_token_type": ACCESS, "actor_token": actor,
+            "actor_token_type": ACCESS, "scope": "orders:read"}
+    unbound = httpx.post(token_url, auth=("harbor-assistant", SECRET),
+                         data=form)
+    print(f"exchange without a DPoP proof: {unbound.status_code} "
+          f"{unbound.json().get('error_description')}\n")
     resp = httpx.post(token_url, auth=("harbor-assistant", SECRET),
                       headers={"DPoP": key.proof("POST", token_url)},
                       data={"grant_type": EXCHANGE,

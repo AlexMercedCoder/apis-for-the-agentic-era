@@ -4,13 +4,13 @@ http://127.0.0.1:8080/realms/harbor/protocol/openid-connect/auth
   &client_id=harbor-storefront
   &redirect_uri=http%3A%2F%2F127.0.0.1%3A8090%2Fcallback
   &scope=openid+orders%3Aread+orders%3Awrite
-  &state=sR5fuFVflFvnMqXwgXqYiA
-  &nonce=5P5wwwPAjgrRuNSLSiYGWw
-  &code_challenge=XB0FnRp7SNQCB5bg32GAxaqr2KKlGArBqsHcqrvTmoU
+  &state=GgIXPmX_47ZxO-EMPloWjw
+  &nonce=0mLcUjO3c5Pt4PNI8I8ucA
+  &code_challenge=hNbVRv3hoVph4wi5KDY3zrzXsTHkeeH_0gOT-1nKPnQ
   &code_challenge_method=S256
 
 == 2. redirect back to the storefront
-http://127.0.0.1:8090/callback?state=sR5fuFVflFvnMqXwgXqYiA&session_state=SY7jL-hugQv0fwc__DDfLXRG&iss=http://127.0.0.1:8080/realms/harbor&code=<98 chars>
+http://127.0.0.1:8090/callback?state=GgIXPmX_47ZxO-EMPloWjw&session_state=dCM17oM40pUuS9e0_IeC0Ljm&iss=http://127.0.0.1:8080/realms/harbor&code=<98 chars>
 
 == 3. the token request with the code verifier
 POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
@@ -35,7 +35,7 @@ content-type: application/json
   "token_type": "Bearer",
   "id_token": "<JWT 1055 chars>",
   "not-before-policy": 0,
-  "session_state": "SY7jL-hugQv0fwc__DDfLXRG",
+  "session_state": "dCM17oM40pUuS9e0_IeC0Ljm",
   "scope": "openid orders:read orders:write profile"
 }
 

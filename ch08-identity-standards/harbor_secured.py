@@ -134,7 +134,10 @@ class Validator:
             if head.get("alg") not in DPOP_ALGORITHMS:
                 raise Denied(401, "invalid_dpop_proof", "algorithm not allowed",
                              dpop=True)
-            jwk = head.get("jwk", {})
+            jwk = head.get("jwk")
+            if not isinstance(jwk, dict):
+                raise Denied(401, "invalid_dpop_proof", "malformed proof",
+                             dpop=True)
             if "d" in jwk:
                 raise Denied(401, "invalid_dpop_proof", "private key in jwk",
                              dpop=True)
@@ -172,7 +175,7 @@ def needs(method: str, path: str):
     """The scope a route needs, or None for a public route."""
     if not path.startswith("/orders"):
         return None
-    return "orders:read" if method == "GET" else "orders:write"
+    return "orders:read" if method in ("GET", "HEAD") else "orders:write"
 
 
 ORDER_PATH = re.compile(r"^/orders/(ord-[0-9]{4})(/cancellation)?$")
@@ -209,7 +212,7 @@ class TokenGate:
             any_order = "orders:read:all" in granted and method == "GET"
             if wanted not in granted and not any_order:
                 raise Denied(403, "insufficient_scope",
-                             f"{method} {path} needs {wanted}", scope=wanted,
+                             f"needs {wanted}", scope=wanted,
                              dpop=bound)
             customer = claims.get("customer_id")
             if customer is None and not any_order:
@@ -254,6 +257,9 @@ class TokenGate:
             # refuse it rather than treat it as a bearer token.
             raise Denied(401, "invalid_token", "unsupported token binding")
         jkt = cnf.get("jkt")
+        if jkt is None and "act" in claims:
+            # A delegated token must be bound to the actor's key.
+            raise Denied(401, "invalid_token", "delegated token not bound")
         if jkt is None and scheme == "dpop":
             raise Denied(401, "invalid_token", "token is not DPoP-bound",
                          dpop=True)
@@ -344,7 +350,9 @@ class TokenGate:
 
     @staticmethod
     def log(scope, status, extra):
-        print(f'"{scope["method"]} {scope["path"]} HTTP/'
+        # raw_path stays percent-encoded, so a request can't split the line
+        path = scope.get("raw_path", b"").decode("ascii", "replace")
+        print(f'"{scope["method"]} {path} HTTP/'
               f'{scope["http_version"]}" {status} {extra}',
               file=sys.stderr, flush=True)
 

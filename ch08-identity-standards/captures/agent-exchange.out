@@ -4,7 +4,7 @@
   "azp": "harbor-storefront",
   "scope": "openid delegation:client:harbor-assistant profile",
   "may_act": {
-    "sub": "111b6b71-0749-4528-9dd5-e4f602b8e3ff",
+    "sub": "cf1d452c-6c81-40f0-ae5c-ab3bf4027c12",
     "client_id": "harbor-assistant"
   }
 }
@@ -13,6 +13,7 @@ the grant sent straight to Harbor: 401 audience mismatch
 == 1. the assistant's own token (client credentials)
 POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
 Host: 127.0.0.1:8080
+DPoP: <JWT 508 chars>
 Content-Type: application/x-www-form-urlencoded
 Authorization: Basic <client_id:client_secret>
 
@@ -23,15 +24,17 @@ cache-control: no-store
 content-type: application/json
 
 {
-  "access_token": "<JWT 762 chars>",
+  "access_token": "<JWT 867 chars>",
   "expires_in": 300,
   "refresh_expires_in": 0,
-  "token_type": "Bearer",
+  "token_type": "DPoP",
   "not-before-policy": 0,
   "scope": ""
 }
 
 == 2. token exchange: Rosa's grant in, a delegated token out
+exchange without a DPoP proof: 400 DPoP proof is missing
+
 POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
 Host: 127.0.0.1:8080
 DPoP: <JWT 508 chars>
@@ -41,7 +44,7 @@ Authorization: Basic <client_id:client_secret>
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange&
 subject_token=<JWT 1179 chars>&
 subject_token_type=urn:ietf:params:oauth:token-type:access_token&
-actor_token=<JWT 762 chars>&
+actor_token=<JWT 867 chars>&
 actor_token_type=urn:ietf:params:oauth:token-type:access_token&
 scope=orders:read
 
@@ -59,18 +62,18 @@ content-type: application/json
   "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
 }
 {
-  "exp": 1794387775,
+  "exp": 1794389374,
   "iss": "http://127.0.0.1:8080/realms/harbor",
   "aud": "http://127.0.0.1:8008",
-  "sub": "aa85c2ea-00d3-4e37-a3c9-6dd900f30805",
+  "sub": "17939103-f2f8-41d4-a126-9ad176bb84cc",
   "azp": "harbor-assistant",
   "cnf": {
-    "jkt": "6iRw_K1nIOfa4SRcAxf_ssRQGiOnxK5JmydGSVgQucs",
+    "jkt": "EU_GhlhGDNDQIeiwnkpXTIVbD9VM7tXU44cwGv-GHSQ",
     "kc-jkt-type": "DPoP"
   },
   "scope": "orders:read",
   "act": {
-    "sub": "111b6b71-0749-4528-9dd5-e4f602b8e3ff",
+    "sub": "cf1d452c-6c81-40f0-ae5c-ab3bf4027c12",
     "client_id": "harbor-assistant"
   },
   "customer_id": "cus-001"
@@ -109,4 +112,4 @@ www-authenticate: DPoP resource_metadata="http://127.0.0.1:8008/.well-known/oaut
 replayed proof: 401 proof already used
 
 == 5. the delegated token tries to cancel the order
-403 DPoP resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="insufficient_scope", error_description="PUT /orders/ord-5003/cancellation needs orders:write", scope="orders:write", algs="ES256"
+403 DPoP resource_metadata="http://127.0.0.1:8008/.well-known/oauth-protected-resource", error="insufficient_scope", error_description="needs orders:write", scope="orders:write", algs="ES256"

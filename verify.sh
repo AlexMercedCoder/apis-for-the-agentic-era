@@ -468,6 +468,7 @@ check "ch08: client credentials read any order and can't cancel" \
            grep -q 'cancellation: 403' '$CH08/fulfillment.out'"
 check "ch08: delegated token names Rosa and the assistant, bound by DPoP" \
   bash -c "grep -q 'the grant sent straight to Harbor: 401 audience mismatch' '$CH08/agent-exchange.out' &&
+           grep -q 'exchange without a DPoP proof: 400 DPoP proof is missing' '$CH08/agent-exchange.out' &&
            grep -q '\"token_type\": \"DPoP\"' '$CH08/agent-exchange.out' &&
            grep -q '\"client_id\": \"harbor-assistant\"' '$CH08/agent-exchange.out' &&
            grep -q '\"customer_id\": \"cus-001\"' '$CH08/agent-exchange.out' &&
