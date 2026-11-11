@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 316
+content-type: application/json
+
+{"data":null,"errors":[{"message":"GraphQL introspection has been disabled, but the requested query contained the field '__schema'.","locations":[{"line":1,"column":3}]},{"message":"GraphQL introspection has been disabled, but the requested query contained the field 'types'.","locations":[{"line":1,"column":14}]}]}

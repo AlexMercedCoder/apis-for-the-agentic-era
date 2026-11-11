@@ -1,0 +1,1 @@
+{"query": "{ books(first: 50) { reviews(first: 50) { book { reviews(first: 50) { rating } } } } }"}

@@ -1,0 +1,10 @@
+# The first books in the catalog with each one's review ratings.
+query CatalogRatings($first: Int!) {
+  books(first: $first) {
+    id
+    title
+    reviews {
+      rating
+    }
+  }
+}

@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 508
+content-type: application/json
+
+{"data":{"books":[{"id":"bk-1001","title":"Moby-Dick","reviews":[{"rating":5},{"rating":3}]},{"id":"bk-1002","title":"Pride and Prejudice","reviews":[]},{"id":"bk-1003","title":"Frankenstein","reviews":[{"rating":4}]},{"id":"bk-1004","title":"The Time Machine","reviews":[]},{"id":"bk-1005","title":"Dracula","reviews":[]},{"id":"bk-1006","title":"Treasure Island","reviews":[]},{"id":"bk-1007","title":"The Adventures of Sherlock Holmes","reviews":[]},{"id":"bk-1008","title":"Little Women","reviews":[]}]}}

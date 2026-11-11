@@ -1,0 +1,14 @@
+POST /graphql 200 op=OrderScreen backend_calls=3 get_order=1 get_books=1 reviews_for_many=1
+error NOT_FOUND path=b: No order with id ord-9999.
+POST /graphql 200 op=- backend_calls=2 get_order=2
+error GRAPHQL path=-: Cannot query field 'stauts' on type 'Order'. Did you mean 'status'?
+POST /graphql 200 op=- backend_calls=0
+error GRAPHQL path=-: 'anonymous' exceeds maximum operation depth of 6
+POST /graphql 200 op=- backend_calls=0
+error COST_LIMIT path=-: Query cost 130051 exceeds the limit of 1000.
+POST /graphql 200 op=- backend_calls=0
+POST /graphql 200 op=CatalogRatings backend_calls=2 list_books=1 reviews_for_many=1
+POST /graphql 200 op=PlaceOrder backend_calls=1 place_order=1
+POST /graphql 200 op=PlaceOrder backend_calls=1 place_order=1
+POST /graphql 200 op=- backend_calls=0
+POST /graphql 200 op=- backend_calls=0

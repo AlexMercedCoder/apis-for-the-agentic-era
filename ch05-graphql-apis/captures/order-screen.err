@@ -1,0 +1,19 @@
+*   Trying 127.0.0.1:8005...
+* Connected to 127.0.0.1 (127.0.0.1) port 8005 (#0)
+> POST /graphql HTTP/1.1
+> Host: 127.0.0.1:8005
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 418
+> 
+} [418 bytes data]
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< date: Wed, 11 Nov 2026 05:28:41 GMT
+< server: uvicorn
+< content-length: 324
+< content-type: application/json
+< 
+{ [324 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 181
+content-type: application/json
+
+{"data":null,"errors":[{"message":"Query cost 130051 exceeds the limit of 1000.","locations":[{"line":1,"column":1}],"extensions":{"code":"COST_LIMIT","cost":130051,"limit":1000}}]}

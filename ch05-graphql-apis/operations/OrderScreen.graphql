@@ -1,0 +1,19 @@
+# An order, its books, and their reviews, for the order screen.
+query OrderScreen($orderId: ID!) {
+  order(id: $orderId) {
+    id
+    status
+    totalCents
+    lines {
+      quantity
+      book {
+        title
+        author
+        reviews(first: 3) {
+          rating
+          text
+        }
+      }
+    }
+  }
+}

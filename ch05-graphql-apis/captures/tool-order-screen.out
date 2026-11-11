@@ -1,0 +1,15 @@
+{
+  "name": "order_screen",
+  "description": "An order, its books, and their reviews, for the order screen.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "orderId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "orderId"
+    ]
+  }
+}

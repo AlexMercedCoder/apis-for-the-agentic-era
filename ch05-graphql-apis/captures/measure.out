@@ -1,0 +1,8 @@
+order screen for ord-5002, 20 runs after one warm-up
+                       requests   body  compact  values  wire median
+REST, five GETs               5    984      802      36        2,041
+GraphQL, query text           1    324      324      11          968
+GraphQL, document ID          1    324      324      11          710
+REST, five GETs: wire 2,041 to 2,041
+GraphQL, query text: wire 968 to 968
+GraphQL, document ID: wire 710 to 710

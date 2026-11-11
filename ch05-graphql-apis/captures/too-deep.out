@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 125
+content-type: application/json
+
+{"data":null,"errors":[{"message":"'anonymous' exceeds maximum operation depth of 6","locations":[{"line":1,"column":106}]}]}

@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 230
+content-type: application/json
+
+{"data":{"a":{"status":"SHIPPED"},"b":null},"errors":[{"message":"No order with id ord-9999.","locations":[{"line":1,"column":39}],"path":["b"],"extensions":{"code":"NOT_FOUND","hint":"Order IDs run from ord-5001 to ord-5004."}}]}

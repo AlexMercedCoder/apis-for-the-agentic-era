@@ -1,0 +1,19 @@
+{
+  "name": "run_graphql",
+  "description": "Run one GraphQL query against Harbor's storefront API. Read the schema first with an introspection query. Queries deeper than 6 levels or costlier than 1000 are refused.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "A GraphQL query document"
+      },
+      "variables": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "query"
+    ]
+  }
+}

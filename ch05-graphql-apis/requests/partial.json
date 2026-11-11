@@ -1,0 +1,1 @@
+{"query": "{ a: order(id: \"ord-5002\") { status } b: order(id: \"ord-9999\") { status } }"}

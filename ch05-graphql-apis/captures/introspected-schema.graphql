@@ -1,0 +1,100 @@
+"""A book in Harbor's catalog."""
+type Book {
+  author: String!
+  currency: String!
+  firstPublished: Int!
+  format: String!
+  id: ID!
+
+  """Copies on hand."""
+  inStock: Int!
+
+  """Price in cents."""
+  priceCents: Int!
+
+  """Reviews of this book, newest last."""
+  reviews(first: Int! = 10): [Review!]!
+  title: String!
+}
+
+input LineInput {
+  """Harbor book ID, such as bk-1001."""
+  bookId: ID!
+
+  """1 to 10."""
+  quantity: Int!
+}
+
+type Mutation {
+  """Buy books. A retry with the same requestId returns the first order."""
+  placeOrder(input: PlaceOrderInput!): Order!
+}
+
+"""A customer's order."""
+type Order {
+  currency: String!
+  id: ID!
+  lines: [OrderLine!]!
+  placedAt: String!
+  status: OrderStatus!
+  totalCents: Int!
+}
+
+"""One line of an order."""
+type OrderLine {
+  book: Book!
+  quantity: Int!
+  unitPriceCents: Int!
+}
+
+"""Where an order is in its life."""
+enum OrderStatus {
+  CANCELLED
+  DELIVERED
+  PAID
+  PLACED
+  SHIPPED
+}
+
+type OrderStatusChange {
+  orderId: ID!
+  status: OrderStatus!
+}
+
+input PlaceOrderInput {
+  customerId: ID!
+  lines: [LineInput!]!
+
+  """A new UUID per order; reuse it only to retry."""
+  requestId: ID!
+}
+
+type Query {
+  """One book by ID."""
+  book(id: ID!): Book
+
+  """Books in catalog order."""
+  books(first: Int! = 10): [Book!]!
+
+  """One order by ID, such as ord-5002."""
+  order(id: ID!): Order
+}
+
+"""A customer's review of one book."""
+type Review {
+  """The book this review is about."""
+  book: Book!
+  id: ID!
+  postedAt: String!
+
+  """1 to 5 stars."""
+  rating: Int!
+  text: String!
+}
+
+type Subscription {
+  """
+  Each status change of one order until it ships (a stand-in on a timer).
+  """
+  orderStatus(orderId: ID!): OrderStatusChange!
+}

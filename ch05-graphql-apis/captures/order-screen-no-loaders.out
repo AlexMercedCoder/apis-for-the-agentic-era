@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+server: uvicorn
+content-length: 324
+content-type: application/json
+
+{"data":{"order":{"id":"ord-5002","status":"SHIPPED","totalCents":4897,"lines":[{"quantity":1,"book":{"title":"Frankenstein","author":"Mary Shelley","reviews":[{"rating":4,"text":"Sturdy hardcover, and the story is darker than the films."}]}},{"quantity":2,"book":{"title":"Dracula","author":"Bram Stoker","reviews":[]}}]}}}

@@ -1,0 +1,35 @@
+{
+  "runs": 20,
+  "rows": [
+    {
+      "name": "REST, five GETs",
+      "requests": 5,
+      "body_bytes": 984,
+      "compact_bytes": 802,
+      "leaf_values": 36,
+      "wire_median": 2041,
+      "wire_min": 2041,
+      "wire_max": 2041
+    },
+    {
+      "name": "GraphQL, query text",
+      "requests": 1,
+      "body_bytes": 324,
+      "compact_bytes": 324,
+      "leaf_values": 11,
+      "wire_median": 968,
+      "wire_min": 968,
+      "wire_max": 968
+    },
+    {
+      "name": "GraphQL, document ID",
+      "requests": 1,
+      "body_bytes": 324,
+      "compact_bytes": 324,
+      "leaf_values": 11,
+      "wire_median": 710,
+      "wire_min": 710,
+      "wire_max": 710
+    }
+  ]
+}

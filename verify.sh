@@ -267,6 +267,70 @@ for key, (req, resp, wire) in want.items():
     assert got == (req, resp, wire), (key, got)
 PY
 
+# --- Chapter 5 ---------------------------------------------------------
+CH05="$TMP/ch05"
+check "ch05: run.sh completes" env OUT="$CH05" ch05-graphql-apis/run.sh
+check "ch05: pinned SDL and trusted documents match the code" \
+  bash -c "cd ch05-graphql-apis && git diff --quiet -- schema.graphql trusted-documents.json &&
+           grep -qx 'served schema matches the pinned schema.graphql' '$CH05/introspect.out' &&
+           grep -q '^introspection: 29184 bytes, 23 types$' '$CH05/introspect.out'"
+check "ch05: OrderScreen returns ord-5002 with both books, by text and by ID" \
+  bash -c "tail -1 '$CH05/order-screen.out' | grep -q '\"title\":\"Frankenstein\"' &&
+           tail -1 '$CH05/order-screen.out' | grep -q '\"title\":\"Dracula\"' &&
+           [ \"\$(tail -1 '$CH05/order-screen.out' | wc -c)\" -eq 324 ] &&
+           cmp -s <(tail -1 '$CH05/order-screen.out' | tr -d '\n') <(tail -1 '$CH05/trusted-id.out' | tr -d '\n') &&
+           grep -q 'Content-Length: 418' '$CH05/order-screen.err'"
+check "ch05: errors arrive inside 200 OK" \
+  bash -c "head -1 '$CH05/partial-error.out' | grep -q '200 OK' &&
+           grep -q '\"b\":null' '$CH05/partial-error.out' &&
+           grep -q '\"hint\":\"Order IDs run from ord-5001 to ord-5004.\"' '$CH05/partial-error.out' &&
+           head -1 '$CH05/validation-error.out' | grep -q '200 OK' &&
+           grep -q \"Did you mean 'status'?\" '$CH05/validation-error.out'"
+check "ch05: depth and cost limits refuse the attack queries" \
+  bash -c "grep -q \"'anonymous' exceeds maximum operation depth of 6\" '$CH05/too-deep.out' &&
+           grep -q 'Query cost 130051 exceeds the limit of 1000.' '$CH05/too-costly.out' &&
+           grep -qx 'OrderScreen      cost 115' '$CH05/costs.out' &&
+           grep -qx 'CatalogRatings   cost 651' '$CH05/costs.out'"
+check "ch05: N+1 without loaders, batched with them" \
+  bash -c "grep -qx 'POST /graphql 200 op=CatalogRatings backend_calls=9 list_books=1 reviews_for=8' '$CH05/server-log-no-loaders.txt' &&
+           grep -qx 'POST /graphql 200 op=CatalogRatings backend_calls=2 list_books=1 reviews_for_many=1' '$CH05/server-log.txt' &&
+           grep -q 'op=OrderScreen backend_calls=5' '$CH05/server-log-no-loaders.txt' &&
+           grep -q 'op=OrderScreen backend_calls=3' '$CH05/server-log.txt' &&
+           cmp -s <(tail -1 '$CH05/catalog-ratings-batched.out') <(tail -1 '$CH05/catalog-ratings-n-plus-1.out')"
+check "ch05: trusted-only refuses text, introspection can be turned off" \
+  bash -c "head -1 '$CH05/trusted-text-refused.out' | grep -q '400 Bad Request' &&
+           grep -q 'This server runs only trusted documents; send a documentId.' '$CH05/trusted-text-refused.out' &&
+           grep -q 'GraphQL introspection has been disabled' '$CH05/introspection-off.out'"
+check "ch05: placeOrder retry with the same requestId returns ord-5005" \
+  bash -c "grep -q '\"id\":\"ord-5005\",\"status\":\"PLACED\",\"totalCents\":3797' '$CH05/place-order.out' &&
+           cmp -s '$CH05/place-order.out' '$CH05/place-order-retry.out'"
+check "ch05: orderStatus subscription streams placed, paid, shipped" \
+  bash -c "cd ch05-graphql-apis && uv run -q python -W ignore -c \"
+import asyncio, harbor_graphql as h
+async def main():
+    gen = await h.build_schema().subscribe(
+        'subscription { orderStatus(orderId: \\\"ord-5003\\\") { status } }')
+    return [r.data['orderStatus']['status'] async for r in gen]
+assert asyncio.run(main()) == ['PLACED', 'PAID', 'SHIPPED']
+\""
+check "ch05: order screen sizes match the chapter's table" \
+  python3 - "$CH05/order-screen-sizes.json" <<'PY'
+import json, sys
+rows = {r["name"]: r for r in json.load(open(sys.argv[1]))["rows"]}
+want = {"REST, five GETs": (5, 984, 802, 36, 2041),
+        "GraphQL, query text": (1, 324, 324, 11, 968),
+        "GraphQL, document ID": (1, 324, 324, 11, 710)}
+for name, exp in want.items():
+    r = rows[name]
+    got = (r["requests"], r["body_bytes"], r["compact_bytes"],
+           r["leaf_values"], r["wire_median"])
+    assert got == exp, (name, got)
+PY
+check "ch05: curated tools from trusted documents, place_order asks first" \
+  bash -c "grep -q '^  place_order      sha256:90fda13f8339...  ask first$' '$CH05/tools.out' &&
+           grep -q '^  order_screen     sha256:50d69ec78f7e...$' '$CH05/tools.out' &&
+           grep -q '^  run_graphql      depth <= 6, cost <= 1000$' '$CH05/tools.out'"
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

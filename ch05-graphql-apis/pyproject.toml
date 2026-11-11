@@ -1,0 +1,14 @@
+[project]
+name = "harbor-ch05"
+version = "0.1.0"
+description = "Chapter 5: Harbor Books storefront GraphQL API, resolvers, DataLoader batching, limits, and trusted documents"
+requires-python = ">=3.13"
+dependencies = [
+    "strawberry-graphql==0.341.2",
+    "uvicorn==0.54.0",
+    "starlette==1.10.0",
+    "httpx==0.28.1",
+]
+
+[tool.uv]
+package = false

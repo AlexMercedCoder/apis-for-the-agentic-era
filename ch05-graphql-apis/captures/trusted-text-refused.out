@@ -1,0 +1,6 @@
+HTTP/1.1 400 Bad Request
+server: uvicorn
+content-length: 59
+content-type: text/plain; charset=utf-8
+
+This server runs only trusted documents; send a documentId.

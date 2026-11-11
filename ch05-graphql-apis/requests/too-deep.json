@@ -1,0 +1,1 @@
+{"query": "{ book(id: \"bk-1001\") { reviews(first: 1) { book { reviews(first: 1) { book { reviews(first: 1) { book { title } } } } } } } }"}

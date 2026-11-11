@@ -1,0 +1,5 @@
+{
+  "sha256:14683c3f3124baf74ac1b110b74d6e9dc63ae3c5184618fe8caf1b64f5a23034": "# The first books in the catalog with each one's review ratings.\nquery CatalogRatings($first: Int!) {\n  books(first: $first) {\n    id\n    title\n    reviews {\n      rating\n    }\n  }\n}\n",
+  "sha256:50d69ec78f7ee81ca104e41aa8991582cd2f6315237e22e69cfec1d14faf235d": "# An order, its books, and their reviews, for the order screen.\nquery OrderScreen($orderId: ID!) {\n  order(id: $orderId) {\n    id\n    status\n    totalCents\n    lines {\n      quantity\n      book {\n        title\n        author\n        reviews(first: 3) {\n          rating\n          text\n        }\n      }\n    }\n  }\n}\n",
+  "sha256:90fda13f833912fbe1d5fa1d4134c41e60ea7881cb6612cd17be20f37ca6acc9": "# Buy books for a customer. Changes data.\nmutation PlaceOrder($input: PlaceOrderInput!) {\n  placeOrder(input: $input) {\n    id\n    status\n    totalCents\n  }\n}\n"
+}
