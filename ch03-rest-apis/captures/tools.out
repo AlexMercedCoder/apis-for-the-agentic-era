@@ -1,0 +1,7 @@
+search_catalog     GET  /books
+get_book           GET  /books/{book_id}
+list_reviews       GET  /books/{book_id}/reviews
+place_order        POST /orders                          ask first
+get_order_status   GET  /orders/{order_id}
+get_cancellation   GET  /orders/{order_id}/cancellation
+cancel_order       PUT  /orders/{order_id}/cancellation  ask first

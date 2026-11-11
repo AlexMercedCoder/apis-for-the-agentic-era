@@ -1,0 +1,18 @@
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 304
+"GET /books/bk-9999 HTTP/1.1" 404
+"GET /books?limit=5000 HTTP/1.1" 422
+"GET /books?limit=2 HTTP/1.1" 200
+"GET /books/bk-1001/reviews HTTP/1.1" 200
+"POST /orders HTTP/1.1" 201 idempotency=new
+"POST /orders HTTP/1.1" 201 idempotency=replay
+"POST /orders HTTP/1.1" 422
+"POST /orders HTTP/1.1" 400
+"POST /orders HTTP/1.1" 409
+"GET /orders/ord-5005 HTTP/1.1" 200
+"PUT /orders/ord-5003/cancellation HTTP/1.1" 200 cancellation=new
+"PUT /orders/ord-5003/cancellation HTTP/1.1" 200 cancellation=existing
+"PUT /orders/ord-5002/cancellation HTTP/1.1" 409
+"DELETE /books/bk-1001 HTTP/1.1" 405
+"GET /books/bk-1001 HTTP/1.1" 406
+"GET /openapi.json HTTP/1.1" 200

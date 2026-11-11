@@ -1,0 +1,6 @@
+{
+  "order": "/orders/ord-5003",
+  "reason": "customer_request",
+  "refunded_cents": 2598,
+  "currency": "USD"
+}

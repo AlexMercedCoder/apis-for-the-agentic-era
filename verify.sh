@@ -37,6 +37,9 @@ for o in json.loads((d / "orders.json").read_text()):
         assert line["book_id"] in books, (o["id"], line["book_id"])
         total += line["quantity"] * line["unit_price_cents"]
     assert total == o["total_cents"], o["id"]
+for r in json.loads((d / "reviews.json").read_text()):
+    assert r["book_id"] in books and r["customer_id"] in customers, r["id"]
+    assert 1 <= r["rating"] <= 5, r["id"]
 PY
 
 # --- Chapter 1 ---------------------------------------------------------
@@ -106,6 +109,71 @@ for bad in ('5002', 'ord-5002\\n', '../ord-5002'):
 check "ch02: tool turns the SOAP fault into JSON the model can act on" \
   bash -c "grep -q '\"error\": \"order_not_found\"' '$CH02/soap-tool.out' &&
            grep -q '\"hint\": \"Order IDs run from ord-5001 to ord-5004.\"' '$CH02/soap-tool.out'"
+
+# --- Chapter 3 ---------------------------------------------------------
+CH03="$TMP/ch03"
+check "ch03: run.sh completes" env OUT="$CH03" ch03-rest-apis/run.sh
+check "ch03: GET a book returns 200 with an ETag and Cache-Control" \
+  bash -c "grep -q '< HTTP/1.1 200 OK' '$CH03/get-book.err' &&
+           grep -qi '< etag: \"' '$CH03/get-book.err' &&
+           grep -qi '< cache-control: max-age=60' '$CH03/get-book.err'"
+check "ch03: If-None-Match with that ETag returns 304 and no body" \
+  bash -c "grep -q '< HTTP/1.1 304 Not Modified' '$CH03/get-book-conditional.err' &&
+           [ ! -s '$CH03/get-book-conditional.out' ]"
+check "ch03: unknown book is a 404 problem details object with a hint" \
+  bash -c "grep -q '< HTTP/1.1 404 Not Found' '$CH03/get-book-missing.err' &&
+           grep -qi '< content-type: application/problem+json' '$CH03/get-book-missing.err' &&
+           grep -q '\"type\": \"https://harbor.example/problems/book-not-found\"' '$CH03/get-book-missing.out' &&
+           grep -q 'This catalog has IDs bk-1001 to bk-1008.' '$CH03/get-book-missing.out'"
+check "ch03: limit=5000 is refused with a 422 naming the parameter" \
+  bash -c "grep -q '< HTTP/1.1 422' '$CH03/search-limit-5000.err' &&
+           grep -q '\"parameter\": \"limit\"' '$CH03/search-limit-5000.out'"
+check "ch03: pages carry a next URL" \
+  grep -q '"next": "/books?limit=2&cursor=bk-1002"' "$CH03/search-page.out"
+check "ch03: POST /orders creates ord-5005; the retry replays it" \
+  bash -c "grep -qi '< location: /orders/ord-5005' '$CH03/place-order.err' &&
+           cmp -s '$CH03/place-order.out' '$CH03/place-order-retry.out' &&
+           [ \$(grep -c 'idempotency=new' '$CH03/server-log.txt') -eq 1 ] &&
+           [ \$(grep -c 'idempotency=replay' '$CH03/server-log.txt') -eq 1 ]"
+check "ch03: a reused key with a new body is 422, no key is 400" \
+  bash -c "grep -q 'idempotency-key-reused' '$CH03/place-order-key-reused.out' &&
+           grep -q '< HTTP/1.1 400 Bad Request' '$CH03/place-order-no-key.err' &&
+           grep -q 'idempotency-key-missing' '$CH03/place-order-no-key.out'"
+check "ch03: out-of-stock order is a 409 problem" \
+  grep -q '"type": "https://harbor.example/problems/out-of-stock"' \
+  "$CH03/place-order-out-of-stock.out"
+check "ch03: order links offer cancel; PUT cancellation twice is the same" \
+  bash -c "grep -q '\"cancel\": {\"href\": \"/orders/ord-5005/cancellation\", \"method\": \"PUT\"}' '$CH03/get-order.out' &&
+           cmp -s '$CH03/cancel-order.out' '$CH03/cancel-order-again.out' &&
+           grep -q 'order-not-cancellable' '$CH03/cancel-shipped.out' &&
+           grep -q 'cancellation=new' '$CH03/server-log.txt' &&
+           grep -q 'cancellation=existing' '$CH03/server-log.txt'"
+check "ch03: DELETE on a book is 405 with Allow; Accept: XML is 406" \
+  bash -c "grep -q '< HTTP/1.1 405 Method Not Allowed' '$CH03/delete-book.err' &&
+           grep -qi '< allow: GET' '$CH03/delete-book.err' &&
+           grep -q '< HTTP/1.1 406 Not Acceptable' '$CH03/accept-xml.err'"
+check "ch03: the served OpenAPI document matches the pinned openapi.json" \
+  grep -qx 'served /openapi.json matches the pinned openapi.json' \
+  "$CH03/openapi-drift.out"
+check "ch03: the place_order operation declares Idempotency-Key and Problem" \
+  bash -c "grep -q 'operationId: place_order' '$CH03/openapi-place-order.out' &&
+           grep -q 'name: Idempotency-Key' '$CH03/openapi-place-order.out' &&
+           grep -q 'application/problem+json' '$CH03/openapi-place-order.out'"
+check "ch03: tools come from openapi.json; the host owns Idempotency-Key" \
+  bash -c "cd ch03-rest-apis && uv run -q python -c \"
+import json, openapi_tools as t
+assert json.load(open('openapi.json'))['openapi'].startswith('3.1'), 'oas'
+names = [x['name'] for x in t.TOOLS]
+assert names == ['search_catalog', 'get_book', 'list_reviews',
+                 'place_order', 'get_order_status', 'get_cancellation',
+                 'cancel_order'], names
+po = t.for_model(next(x for x in t.TOOLS if x['name'] == 'place_order'))
+assert 'Idempotency-Key' not in json.dumps(po['input_schema']), po
+assert po['input_schema']['required'] == ['customer_id', 'lines']
+assert set(po) == {'name', 'description', 'input_schema'}
+ask = [x['name'] for x in t.TOOLS if x['x-harbor']['needs_approval']]
+assert ask == ['place_order', 'cancel_order'], ask
+\""
 
 echo
 echo "$PASS passed, $FAIL failed"

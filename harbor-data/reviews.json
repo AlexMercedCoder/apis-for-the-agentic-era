@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rev-001",
+    "book_id": "bk-1001",
+    "customer_id": "cus-002",
+    "rating": 5,
+    "text": "Long, strange, and worth every chapter about rope.",
+    "posted_at": "2026-09-14T20:11:03Z"
+  },
+  {
+    "id": "rev-002",
+    "book_id": "bk-1001",
+    "customer_id": "cus-003",
+    "rating": 3,
+    "text": "Skimmed the whaling chapters. The ending holds up.",
+    "posted_at": "2026-10-02T08:47:55Z"
+  },
+  {
+    "id": "rev-003",
+    "book_id": "bk-1003",
+    "customer_id": "cus-001",
+    "rating": 4,
+    "text": "Sturdy hardcover, and the story is darker than the films.",
+    "posted_at": "2026-10-19T16:30:12Z"
+  }
+]

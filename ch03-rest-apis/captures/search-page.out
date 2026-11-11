@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "id": "bk-1001",
+      "title": "Moby-Dick",
+      "author": "Herman Melville",
+      "first_published": 1851,
+      "format": "paperback",
+      "price_cents": 1499,
+      "currency": "USD",
+      "in_stock": 7
+    },
+    {
+      "id": "bk-1002",
+      "title": "Pride and Prejudice",
+      "author": "Jane Austen",
+      "first_published": 1813,
+      "format": "paperback",
+      "price_cents": 1199,
+      "currency": "USD",
+      "in_stock": 12
+    }
+  ],
+  "next": "/books?limit=2&cursor=bk-1002"
+}

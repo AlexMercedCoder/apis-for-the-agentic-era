@@ -1,0 +1,6 @@
+{
+  "customer_id": "cus-001",
+  "lines": [
+    {"book_id": "bk-1002", "quantity": 3}
+  ]
+}

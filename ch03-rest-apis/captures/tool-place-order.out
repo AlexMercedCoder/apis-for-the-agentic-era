@@ -1,0 +1,36 @@
+{
+  "name": "place_order",
+  "description": "Place an order. Buy one or more books for a customer. Creates an order and reserves stock. Each new Idempotency-Key creates a new order; a retry with the same key and body within 24 hours returns the first response. Changes data. Not idempotent; the host makes retries safe.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "customer_id": {
+        "type": "string",
+        "pattern": "^cus-[0-9]{3}$",
+        "description": "Harbor customer ID, such as cus-001"
+      },
+      "lines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "book_id": {
+              "type": "string",
+              "pattern": "^bk-[0-9]{4}$",
+              "description": "Harbor book ID, such as bk-1001"
+            },
+            "quantity": {
+              "type": "integer",
+              "maximum": 10,
+              "minimum": 1
+            }
+          },
+          "required": ["book_id", "quantity"]
+        },
+        "maxItems": 20,
+        "minItems": 1
+      }
+    },
+    "required": ["customer_id", "lines"]
+  }
+}

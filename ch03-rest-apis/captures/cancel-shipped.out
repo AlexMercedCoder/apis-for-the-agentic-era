@@ -1,0 +1,8 @@
+{
+  "type": "https://harbor.example/problems/order-not-cancellable",
+  "title": "Order can't be cancelled",
+  "status": 409,
+  "detail": "Order ord-5002 is shipped.",
+  "instance": "/orders/ord-5002/cancellation",
+  "hint": "Only placed or paid orders can be cancelled."
+}

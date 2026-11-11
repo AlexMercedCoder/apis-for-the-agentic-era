@@ -1,0 +1,8 @@
+{
+  "type": "https://harbor.example/problems/idempotency-key-missing",
+  "title": "Idempotency-Key required",
+  "status": 400,
+  "detail": "POST /orders needs an Idempotency-Key header.",
+  "instance": "/orders",
+  "hint": "Send a new UUID per order; reuse it only to retry."
+}

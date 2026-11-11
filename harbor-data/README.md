@@ -10,10 +10,11 @@ agent protocols.
 | `books.json` | the catalog: title, author, first publication year, format, price, stock | `id`, such as `bk-1001` |
 | `customers.json` | three customers | `id`, such as `cus-001` |
 | `orders.json` | four orders in different states | `id`, such as `ord-5001` |
+| `reviews.json` | three customer reviews (added in Chapter 3) | `id`, such as `rev-001` |
 
 The titles, authors, and first publication years are real public-domain books.
 Everything else is made up for the example: prices, stock counts, customers,
-email addresses (all on `example.com`), dates, and orders.
+email addresses (all on `example.com`), dates, orders, and reviews.
 
 Conventions later chapters rely on:
 

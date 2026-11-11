@@ -1,0 +1,13 @@
+{
+  "type": "https://harbor.example/problems/invalid-request",
+  "title": "Invalid request",
+  "status": 422,
+  "detail": "The request failed validation; see errors.",
+  "instance": "/books",
+  "errors": [
+    {
+      "detail": "Input should be less than or equal to 50",
+      "parameter": "limit"
+    }
+  ]
+}

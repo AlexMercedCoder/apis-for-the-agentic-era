@@ -1,0 +1,16 @@
+*   Trying 127.0.0.1:8003...
+* Connected to 127.0.0.1 (127.0.0.1) port 8003 (#0)
+> GET /books?limit=2 HTTP/1.1
+> Host: 127.0.0.1:8003
+> User-Agent: curl/7.81.0
+> Accept: */*
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< date: Wed, 11 Nov 2026 03:57:04 GMT
+< server: harbor-ch03/1.0
+< content-length: 532
+< content-type: application/json
+< 
+{ [532 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

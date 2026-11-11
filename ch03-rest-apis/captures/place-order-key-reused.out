@@ -1,0 +1,8 @@
+{
+  "type": "https://harbor.example/problems/idempotency-key-reused",
+  "title": "Idempotency-Key reused",
+  "status": 422,
+  "detail": "This key was already used for a different order.",
+  "instance": "/orders",
+  "hint": "Use a new key for a new order."
+}

@@ -1,0 +1,8 @@
+{
+  "type": "https://harbor.example/problems/method-not-allowed",
+  "title": "Method Not Allowed",
+  "status": 405,
+  "detail": "DELETE is not supported on /books/bk-1001.",
+  "instance": "/books/bk-1001",
+  "hint": "Allowed methods: GET."
+}

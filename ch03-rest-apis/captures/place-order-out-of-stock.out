@@ -1,0 +1,8 @@
+{
+  "type": "https://harbor.example/problems/out-of-stock",
+  "title": "Not enough stock",
+  "status": 409,
+  "detail": "The Time Machine (bk-1004) has 0 in stock; 1 requested.",
+  "instance": "/orders",
+  "hint": "Lower the quantity or remove the line."
+}

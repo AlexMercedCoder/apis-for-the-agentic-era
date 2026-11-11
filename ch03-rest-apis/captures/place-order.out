@@ -1,0 +1,16 @@
+{
+  "id": "ord-5005",
+  "customer_id": "cus-001",
+  "status": "placed",
+  "placed_at": "2026-11-11T03:57:04Z",
+  "lines": [
+    {"book_id": "bk-1002", "quantity": 1, "unit_price_cents": 1199},
+    {"book_id": "bk-1008", "quantity": 2, "unit_price_cents": 1299}
+  ],
+  "total_cents": 3797,
+  "currency": "USD",
+  "links": {
+    "self": {"href": "/orders/ord-5005", "method": "GET"},
+    "cancel": {"href": "/orders/ord-5005/cancellation", "method": "PUT"}
+  }
+}

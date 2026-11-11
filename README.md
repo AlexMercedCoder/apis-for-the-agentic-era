@@ -6,7 +6,7 @@ Every request, response, and error printed in the book comes from running the co
 
 ## Status
 
-The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/`, `ch01-what-is-an-api/`, and `ch02-soap-apis/`.
+The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/`, `ch01-what-is-an-api/`, `ch02-soap-apis/`, and `ch03-rest-apis/`.
 
 To check everything that runs offline:
 

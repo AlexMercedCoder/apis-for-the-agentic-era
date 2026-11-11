@@ -1,0 +1,8 @@
+{
+  "type": "https://harbor.example/problems/not-acceptable",
+  "title": "Not Acceptable",
+  "status": 406,
+  "detail": "This API has no application/xml representation.",
+  "instance": "/books/bk-1001",
+  "hint": "Send Accept: application/json, or omit Accept."
+}
