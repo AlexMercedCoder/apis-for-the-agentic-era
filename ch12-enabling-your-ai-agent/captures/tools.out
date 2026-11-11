@@ -1,0 +1,12 @@
+Chapter 10, one tool per operation: 7 tools, 3301 bytes
+  search_catalog       reads
+  get_book             reads
+  list_reviews         reads
+  place_order          writes
+  get_order_status     reads
+  get_cancellation     reads
+  cancel_order         writes
+Chapter 12, one tool per task: 3 tools, 1912 bytes
+  order_overview       reads
+  refund_damaged_copy  writes, after approval
+  report_damage        records a case

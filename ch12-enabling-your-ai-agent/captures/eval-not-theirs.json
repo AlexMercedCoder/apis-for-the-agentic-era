@@ -1,0 +1,19 @@
+{
+  "scenario": "not-theirs",
+  "question": "Where's my order ord-5002? The Frankenstein copy was damaged.",
+  "calls": [
+    {
+      "tool": "order_overview",
+      "args": {
+        "order_id": "ord-5002"
+      },
+      "result": {
+        "isError": true,
+        "structured": null,
+        "text": "No order with id ord-5002."
+      }
+    }
+  ],
+  "approvals": [],
+  "answer": "I can't find ord-5002 on your account."
+}

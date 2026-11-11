@@ -1,0 +1,13 @@
+# Chapter 12: Apache APISIX 3.19.0 as Harbor's gateway, in standalone mode,
+# on the host network so it reaches Harbor's servers on 127.0.0.1. It
+# listens on 127.0.0.1:9080 only (apisix/config.yaml).
+name: harbor-ch12
+
+services:
+  apisix:
+    image: apache/apisix:3.19.0-debian
+    network_mode: host
+    volumes:
+      - ./apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ${GATEWAY_LOGS:-./captures/gateway}:/usr/local/apisix/logs

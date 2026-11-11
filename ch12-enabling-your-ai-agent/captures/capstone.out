@@ -1,0 +1,12 @@
+session s-7f0efe1e: rosa via harbor-assistant, 3 tools
+1. rosa: "Where's my order ord-5001? The copy of Moby-Dick that came was damaged. Can you refund it?"
+2. order_overview {"order_id": "ord-5001"}
+   delivered: bk-1001 Moby-Dick 1499
+3. report_damage {"order_id": "ord-5001", "book_id": "bk-1001", "description": "torn cover"}
+   A2A task 426f1baf completed: dmg-5001-1001, return_required=False
+4. host: held for rosa's approval; CIBA request sent to her phone: "Refund 14.99 USD for Moby-Dick on ord-5001?"
+5. rosa's phone: approved; token scope "orders:read orders:refund", authorization_details ord-5001 bk-1001 max 1499
+6. refund_damaged_copy {"order_id": "ord-5001", "book_id": "bk-1001", "damage_case": "dmg-5001-1001"}
+   rf-e0ad46b2 1499 cents, pending
+7. webhook refund.succeeded rf-e0ad46b2: agent woken
+8. answer: ord-5001 was delivered. I've refunded 14.99 USD for the damaged Moby-Dick, and Harbor has confirmed it.

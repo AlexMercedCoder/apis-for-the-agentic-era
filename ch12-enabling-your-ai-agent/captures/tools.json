@@ -1,0 +1,77 @@
+[
+  {
+    "name": "order_overview",
+    "description": "Look up one of the signed-in customer's orders: status, total, and each line's book_id, title, quantity, and price in cents. Call it first for any question about an order. Read-only.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "pattern": "^ord-[0-9]{4}$",
+          "description": "Harbor order ID, such as ord-5001"
+        }
+      },
+      "required": [
+        "order_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "refund_damaged_copy",
+    "description": "Refund the price paid for one book that arrived damaged on a delivered order. Needs the damage_case that Harbor's fulfillment agent returns from report-damage, and the customer's approval, which the host asks for. Each book on an order is refunded at most once. Changes data: issues a refund, confirmed later by Harbor.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "pattern": "^ord-[0-9]{4}$",
+          "description": "Harbor order ID, such as ord-5001"
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^bk-[0-9]{4}$",
+          "description": "Harbor book ID from the order's lines"
+        },
+        "damage_case": {
+          "type": "string",
+          "pattern": "^dmg-[0-9]{4}-[0-9]{4}$",
+          "description": "case_id from report-damage"
+        }
+      },
+      "required": [
+        "order_id",
+        "book_id",
+        "damage_case"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "report_damage",
+    "description": "Record that one book on a delivered order arrived damaged. Send a data part with order_id, book_id, and a short description. Returns a damage_case artifact with case_id, return_required, and refund_eligible. (Asks Harbor Books fulfillment agent over A2A.)",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "pattern": "^ord-[0-9]{4}$"
+        },
+        "book_id": {
+          "type": "string",
+          "pattern": "^bk-[0-9]{4}$"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "order_id",
+        "book_id",
+        "description"
+      ],
+      "additionalProperties": false
+    }
+  }
+]

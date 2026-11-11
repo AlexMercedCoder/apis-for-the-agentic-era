@@ -2,8 +2,8 @@
 # Runs every example in this repository that needs no network access
 # beyond 127.0.0.1 and no API keys, and checks the output the book prints.
 # Usage: ./verify.sh    (needs bash, curl, uv; Chapters 4 and 6 also need
-# Node 24, Chapter 4 needs grpcurl 1.9.4, and Chapters 7, 8, 10, and 11
-# need Docker)
+# Node 24, Chapter 4 needs grpcurl 1.9.4, and Chapters 7, 8, 10, 11, and
+# 12 need Docker)
 set -uo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
@@ -711,6 +711,41 @@ check "ch11: Chapter 3's logger forges a line; the JSON logs don't" \
 check "ch11: inventory finds the shadow routes and the deprecated path" \
   bash -c "grep -q '^  /docs, ' '$CH11/inventory.out' &&
            grep -q 'deprecated: /v0/books/\*' '$CH11/inventory.out'"
+
+# Chapter 12: the Harbor support agent, end to end. The offline checks need
+# only uv; run.sh needs Docker (apache/apisix:3.19.0-debian).
+check "ch12: retries, breaker, exchange rules, refunds API refusals (offline)" \
+  bash -c "cd ch12-enabling-your-ai-agent && OUT=\"$TMP\" uv run -q python test_offline.py"
+check "ch12: the recorded capstone replays offline with the refund held" \
+  bash -c "cd ch12-enabling-your-ai-agent && uv run -q python replay_test.py captures/fixtures-capstone.json | grep -q 'answer matches; 3 calls replayed'"
+CH12="$TMP/ch12"
+check "ch12: run.sh completes" env OUT="$CH12" ch12-enabling-your-ai-agent/run.sh
+check "ch12: three task tools, smaller than Chapter 10's seven" \
+  bash -c "grep -q 'one tool per operation: 7 tools' '$CH12/tools.out' &&
+           grep -q 'one tool per task: 3 tools' '$CH12/tools.out'"
+check "ch12: capstone overview, A2A case, CIBA approval, refund, webhook" \
+  bash -c "grep -q 'delivered: bk-1001 Moby-Dick 1499' '$CH12/capstone.out' &&
+           grep -q 'completed: dmg-5001-1001' '$CH12/capstone.out' &&
+           grep -q 'phone: approved' '$CH12/capstone.out' &&
+           grep -q 'webhook refund.succeeded rf-' '$CH12/capstone.out' &&
+           grep -q 'answer: ord-5001 was delivered' '$CH12/capstone.out'"
+check "ch12: timed-out refund replayed with one key; one provider refund" \
+  bash -c "grep -q 'refund attempt 1: timed out after 1.0 s' '$CH12/support-mcp.log' &&
+           grep -q 'refund ord-5001 bk-1001 -> 201 replayed' '$CH12/support-mcp.log' &&
+           grep -q 'rosa->harbor-assistant->harbor-support-mcp' '$CH12/refunds-api.log' &&
+           [ \"\$(sed '/replayed key/q' '$CH12/refunds-api.log' | grep -c '^201 rf-')\" = 1 ] &&
+           grep -q '\"status\":499' '$CH12/gateway-access.jsonl'"
+check "ch12: the 429 waits out X-RateLimit-Reset, then 200" \
+  bash -c "grep -q 'calls 1 to 10: \(200 \)\{9\}200' '$CH12/rate-limit.out' &&
+           grep -q 'attempt 1: 429, retry in' '$CH12/rate-limit.out' &&
+           grep -q 'call 11: 200' '$CH12/rate-limit.out'"
+check "ch12: one trace across host, MCP server, fulfillment, refunds API" \
+  bash -c "grep -q 'support-mcp    tools/call refund_damaged_copy' '$CH12/trace.out' &&
+           grep -q 'fulfillment    SendMessage' '$CH12/trace.out' &&
+           grep -q 'decision=approved' '$CH12/trace.out'"
+check "ch12: evaluation suite 7 of 7; no token in captures" \
+  bash -c "grep -q '7 passed, 0 failed' '$CH12/eval.out' &&
+           ! grep -rqE 'eyJ[A-Za-z0-9_-]{10,}' '$CH12' --exclude-dir=gateway"
 
 echo
 echo "$PASS passed, $FAIL failed"

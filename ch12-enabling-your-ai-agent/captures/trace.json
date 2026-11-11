@@ -1,0 +1,108 @@
+[
+ {
+  "depth": 0,
+  "service": "support-host",
+  "name": "invoke_agent harbor-support",
+  "start_ms": 0,
+  "ms": 3607,
+  "attrs": {}
+ },
+ {
+  "depth": 1,
+  "service": "support-host",
+  "name": "tools/call order_overview",
+  "start_ms": 275,
+  "ms": 100,
+  "attrs": {}
+ },
+ {
+  "depth": 2,
+  "service": "support-mcp",
+  "name": "tools/call order_overview",
+  "start_ms": 309,
+  "ms": 65,
+  "attrs": {}
+ },
+ {
+  "depth": 1,
+  "service": "support-host",
+  "name": "SendMessage",
+  "start_ms": 474,
+  "ms": 339,
+  "attrs": {
+   "a2a.task.state": "TASK_STATE_COMPLETED"
+  }
+ },
+ {
+  "depth": 2,
+  "service": "fulfillment",
+  "name": "SendMessage",
+  "start_ms": 509,
+  "ms": 304,
+  "attrs": {
+   "enduser.id": "rosa"
+  }
+ },
+ {
+  "depth": 1,
+  "service": "support-host",
+  "name": "approval harbor_refund",
+  "start_ms": 814,
+  "ms": 1080,
+  "attrs": {
+   "harbor.approval.decision": "approved"
+  }
+ },
+ {
+  "depth": 1,
+  "service": "support-host",
+  "name": "tools/call refund_damaged_copy",
+  "start_ms": 1895,
+  "ms": 1712,
+  "attrs": {}
+ },
+ {
+  "depth": 2,
+  "service": "support-mcp",
+  "name": "tools/call refund_damaged_copy",
+  "start_ms": 1962,
+  "ms": 1644,
+  "attrs": {}
+ },
+ {
+  "depth": 3,
+  "service": "refunds-api",
+  "name": "POST /orders/{order_id}/refunds",
+  "start_ms": 2073,
+  "ms": 1638,
+  "attrs": {
+   "enduser.id": "rosa"
+  }
+ },
+ {
+  "depth": 4,
+  "service": "refunds-api",
+  "name": "POST /v1/refunds",
+  "start_ms": 2106,
+  "ms": 103,
+  "attrs": {}
+ },
+ {
+  "depth": 3,
+  "service": "refunds-api",
+  "name": "POST /orders/{order_id}/refunds",
+  "start_ms": 3572,
+  "ms": 32,
+  "attrs": {
+   "enduser.id": "rosa"
+  }
+ },
+ {
+  "depth": 1,
+  "service": "support-host",
+  "name": "await refund.succeeded",
+  "start_ms": 3607,
+  "ms": 0,
+  "attrs": {}
+ }
+]

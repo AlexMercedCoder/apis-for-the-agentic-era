@@ -1,0 +1,8 @@
+PASS  happy       asks Rosa once, refunds once
+PASS  happy       overview, report, refund
+PASS  guess-case  refused without a case, follows the hint
+PASS  guess-case  one approval, one refund
+PASS  repeat      a repeated call returns the same refund
+PASS  declined    Rosa says no; nothing refunded
+PASS  not-theirs  someone else's order looks missing; no write
+7 passed, 0 failed

@@ -1,0 +1,65 @@
+{
+  "scenario": "declined",
+  "question": "Where's my order ord-5001? The copy of Moby-Dick that came was damaged. Can you refund it?",
+  "calls": [
+    {
+      "tool": "order_overview",
+      "args": {
+        "order_id": "ord-5001"
+      },
+      "result": {
+        "isError": false,
+        "structured": {
+          "order_id": "ord-5001",
+          "status": "delivered",
+          "total_cents": 1499,
+          "lines": [
+            {
+              "book_id": "bk-1001",
+              "title": "Moby-Dick",
+              "quantity": 1,
+              "price_cents": 1499
+            }
+          ]
+        },
+        "text": "{\"order_id\": \"ord-5001\", \"status\": \"delivered\", \"total_cents\": 1499, \"lines\": [{\"book_id\": \"bk-1001\", \"title\": \"Moby-Dick\", \"quantity\": 1, \"price_cents\": 1499}]}"
+      }
+    },
+    {
+      "tool": "report_damage",
+      "args": {
+        "order_id": "ord-5001",
+        "book_id": "bk-1001",
+        "description": "torn cover"
+      },
+      "result": {
+        "isError": false,
+        "structured": {
+          "return_required": false,
+          "order_id": "ord-5001",
+          "case_id": "dmg-5001-1001",
+          "book_id": "bk-1001",
+          "refund_eligible": true
+        },
+        "text": "Damage recorded as dmg-5001-1001; no return needed.",
+        "task": "f58d030f-83f1-49dd-aed8-bfbd08f38950"
+      }
+    },
+    {
+      "tool": "refund_damaged_copy",
+      "args": {
+        "order_id": "ord-5001",
+        "book_id": "bk-1001",
+        "damage_case": "dmg-5001-1001"
+      },
+      "result": {
+        "isError": true,
+        "text": "The customer declined on her phone; nothing was refunded."
+      }
+    }
+  ],
+  "approvals": [
+    "access_denied"
+  ],
+  "answer": "You declined the refund on your phone, so nothing was changed."
+}

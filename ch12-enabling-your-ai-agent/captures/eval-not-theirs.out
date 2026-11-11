@@ -1,0 +1,5 @@
+session s-982de8ac: rosa via harbor-assistant, 3 tools
+1. rosa: "Where's my order ord-5002? The Frankenstein copy was damaged."
+2. order_overview {"order_id": "ord-5002"}
+   error: No order with id ord-5002.
+3. answer: I can't find ord-5002 on your account.

@@ -1,0 +1,111 @@
+# Chapter 12's gateway: Chapter 11's rules for the support agent, plus the
+# routes its tools reach. Consumers are known by the token's azp claim.
+# The assistant's limit is per person (the verified sub, kept in ctx).
+consumers:
+  - username: assistant
+    plugins:
+      jwt-auth: {key: harbor-assistant, algorithm: RS256,
+                 public_key: "{PEM}"}
+      limit-count: {count: 10, time_window: 60, rejected_code: 429,
+                    rejected_msg: "rate limit exceeded",
+                    key_type: var_combination,
+                    key: "$consumer_name $harbor_sub"}
+  - username: support-mcp
+    plugins:
+      jwt-auth: {key: harbor-support-mcp, algorithm: RS256,
+                 public_key: "{PEM}"}
+      limit-count: {count: 60, time_window: 60, rejected_code: 429,
+                    key_type: var_combination,
+                    key: "$consumer_name $harbor_sub"}
+plugin_configs:
+  - id: person
+    plugins:
+      serverless-pre-function:
+        phase: access
+        functions:
+          - |
+            local core = require("apisix.core")
+            core.ctx.register_var("harbor_sub", function(ctx)
+              return ctx.harbor_sub
+            end, {no_cacheable = true})
+            return function(conf, ctx)
+              local p = ctx.jwt_auth_payload
+              if not p or not p.exp or not p.sub then
+                return 401, {message = "token must carry exp and sub"}
+              end
+              ctx.harbor_sub = p.sub
+            end
+routes:
+  - id: mcp-unreadable
+    uri: /mcp
+    priority: 20
+    vars: [["OR",
+            ["http_mcp_protocol_version", "!", "==", "2026-07-28"],
+            ["http_mcp_method", "!", "~~", "^[a-z/]+$"],
+            ["http_mcp_name", "~~", "[=?,]"]]]
+    plugins:
+      fault-injection:
+        abort: {http_status: 400,
+                body: "MCP 2026-07-28 with plain Mcp-* headers only"}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8122": 1}}
+  - id: mcp-unknown-tools
+    uri: /mcp
+    priority: 10
+    vars: [["http_mcp_method", "==", "tools/call"],
+           ["http_mcp_name", "!", "in", ["order_overview",
+            "refund_damaged_copy"]]]
+    plugins:
+      fault-injection:
+        abort: {http_status: 403, body: "tool not offered to agents"}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8122": 1}}
+  - id: mcp
+    uri: /mcp
+    plugin_config_id: person
+    plugins:
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
+      consumer-restriction: {whitelist: [assistant]}
+      limit-req: {rate: 20, burst: 20, rejected_code: 429,
+                  key_type: var, key: consumer_name}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8122": 1}}
+  - id: mcp-metadata
+    uri: /.well-known/oauth-protected-resource/mcp
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8122": 1}}
+  - id: refunds
+    uri: /orders/*
+    plugin_config_id: person
+    plugins:
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
+      consumer-restriction: {whitelist: [support-mcp]}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8123": 1}}
+  - id: a2a-card
+    uri: /a2a/fulfillment/.well-known/agent-card.json
+    priority: 10
+    plugins:
+      proxy-rewrite: {uri: /.well-known/agent-card.json}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8124": 1}}
+  - id: a2a
+    uri: /a2a/fulfillment/*
+    plugin_config_id: person
+    plugins:
+      jwt-auth: {key_claim_name: azp, store_in_ctx: true}
+      consumer-restriction: {whitelist: [assistant]}
+      proxy-rewrite: {regex_uri: ["^/a2a/fulfillment/(.*)", "/$1"]}
+    upstream: {type: roundrobin, nodes: {"127.0.0.1:8124": 1}}
+global_rules:
+  - id: audit
+    plugins:
+      file-logger:
+        path: /usr/local/apisix/logs/access.jsonl
+        log_format:
+          time: "$time_iso8601"
+          gateway_request_id: "$request_id"
+          traceparent: "$http_traceparent"
+          consumer: "$consumer_name"
+          sub: "$harbor_sub"
+          method: "$request_method"
+          uri: "$request_uri"
+          mcp_method: "$http_mcp_method"
+          mcp_name: "$http_mcp_name"
+          status: "$status"
+          upstream_ms: "$upstream_response_time"
+#END
