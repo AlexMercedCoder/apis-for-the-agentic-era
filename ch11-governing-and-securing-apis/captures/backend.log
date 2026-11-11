@@ -1,7 +1,17 @@
-{"method": "GET", "path": "/books/bk-1001", "status": 200, "sub": "rosa", "azp": "harbor-storefront", "ms": 93}
+{"method": "GET", "path": "/books/bk-1001", "status": 200, "sub": "rosa", "azp": "harbor-storefront", "ms": 78}
 {"method": "GET", "path": "/books/bk-1001", "status": 200, "sub": "rosa", "azp": "harbor-storefront", "ms": 1}
 "GET /orders/ord-5002 HTTP/1.1" 200
-{"method": "GET", "path": "/orders/ord-5002", "status": 404, "sub": "rosa", "azp": "harbor-storefront", "ms": 1}
+{"method": "GET", "path": "/orders/ord-5002", "status": 404, "sub": "rosa", "azp": "harbor-storefront", "ms": 0}
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
+"GET /books/bk-1001 HTTP/1.1" 200
 "GET /books/bk-1001 HTTP/1.1" 200
 "GET /books/bk-1001 HTTP/1.1" 200
 "GET /books/bk-1001 HTTP/1.1" 200

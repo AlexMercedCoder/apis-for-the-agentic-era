@@ -122,14 +122,47 @@ NOEXP=$(uv run -q python issuer.py mint harbor-storefront exp=)
     -X POST $GW/mcp -H "Authorization: Bearer $SAM" \
     -H 'Content-Type: application/json' \
     -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize"}')"
+  echo "Mcp_Method decoy plus cancel_order:" \
+    "$(curl -s -o /dev/null -w '%{http_code}' -X POST $GW/mcp \
+      -H "Authorization: Bearer $SAM" -H 'MCP-Protocol-Version: 2026-07-28' \
+      -H 'Mcp_Method: tools/list' -H 'Mcp-Method: tools/call' \
+      -H 'Mcp-Name: cancel_order' -d '{}')"
+  echo "MCP_Protocol_Version, legacy session:" \
+    "$(curl -s -o /dev/null -w '%{http_code}' -X POST $GW/mcp \
+      -H "Authorization: Bearer $SAM" -H 'MCP_Protocol_Version: 2026-07-28' \
+      -H 'Mcp-Method: tools/call' -H 'Mcp-Name: get_book' -d '{}')"
+  echo "Mcp-Method sent twice:" \
+    "$(curl -s -o /dev/null -w '%{http_code}' -X POST $GW/mcp \
+      -H "Authorization: Bearer $SAM" -H 'MCP-Protocol-Version: 2026-07-28' \
+      -H 'Mcp-Method: tools/list' -H 'Mcp-Method: tools/call' \
+      -H 'Mcp-Name: cancel_order' -d '{}')"
+  PAT=$(uv run -q python issuer.py mint harbor-assistant sub=pat \
+    customer_id=cus-003)
+  spoof=""
+  for i in $(seq 1 11); do
+    spoof+="$(curl -s -D - -o /dev/null -X POST $GW/mcp \
+      -H "Authorization: Bearer $PAT" -H "X-Harbor-Sub: s$i" \
+      -H "X_Harbor_Sub: u$i" -H 'Content-Type: application/json' \
+      -H 'Accept: application/json, text/event-stream' \
+      -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' \
+      -H 'Mcp-Name: get_book' -d '{"jsonrpc": "2.0", "id": 1,
+        "method": "tools/call", "params": {"name": "get_book",
+        "arguments": {"book_id": "bk-1001"}, "_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": {}}}}' \
+      | head -1 | cut -d' ' -f2) "
+  done
+  echo "a spoofed sub header on each of 11 calls: $spoof"
   echo "the same token straight to the gate: $(curl -s -w ' %{http_code}' \
     -H "Authorization: Bearer $NOEXP" http://127.0.0.1:8111/orders/ord-5003)"
 } > "$OUT/gateway-probes.out"
 reset=$(grep -i x-ratelimit-reset "$OUT/rate-limit.out" | awk '{print $2}')
 sleep "$(python3 -c "import math; print(math.ceil(float('$reset')) + 1)")"
 
-# 5. The planted review, the controls, and the audit trail.
-uv run -q python agent_host.py > "$OUT/agent-host.out"
+# 5. The planted review, the controls, and the audit trail. The audit
+#    key is random per run; keep a real one in a secret store.
+HARBOR_AUDIT_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))") \
+  uv run -q python agent_host.py > "$OUT/agent-host.out"
 
 # 6. Log injection: a path with an encoded newline.
 EVIL='/books/bk-1001%0A%22DELETE%20/orders/ord-5001%20HTTP/1.1%22%20204'

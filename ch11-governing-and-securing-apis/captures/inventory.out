@@ -2,4 +2,4 @@ contract: 6 paths; backend serves 10; gateway has 6 routes
 shadow (served, not in the contract):
   /docs, /docs/oauth2-redirect, /openapi.json, /redoc
 deprecated: /v0/books/*, Sunset Sat, 01 May 2027 00:00:00 GMT
-  still called: 2 times, by assistant, storefront
+  still called: 1 times, by storefront

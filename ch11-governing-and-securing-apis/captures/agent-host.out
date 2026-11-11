@@ -1,4 +1,4 @@
-session s-90e4e704: rosa via harbor-assistant, orders:read
+session s-cba1c24b: rosa via harbor-assistant, orders:read
 1. rosa: "Where's ord-5003? And is Frankenstein any good?"
 2. get_order_status ord-5003: paid
 3. list_reviews bk-1003: 2 reviews, tagged untrusted

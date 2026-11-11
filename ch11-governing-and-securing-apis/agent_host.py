@@ -49,8 +49,6 @@ READ_ONLY = {"search_catalog", "get_book", "list_reviews",
 # A tripwire for the audit log, not a defense: it labels text that looks
 # like instructions so the trail shows where they entered. Attackers can
 # reword, so holding writes never depends on it (see must_hold()).
-AUDIT_KEY = os.environ.get("HARBOR_AUDIT_KEY",
-                           "not-a-real-audit-key").encode()
 SUSPECT = re.compile(r"(?i)\b(ai assistants?|ignore (all|previous)|"
                      r"do not ask|don't ask|system prompt|call \w+_\w+)")
 
@@ -91,7 +89,14 @@ def digest(name, args):
     store; a plain hash of an order ID can be reversed by guessing.
     """
     text = json.dumps([name, args], sort_keys=True).encode()
-    return "hmac:" + hmac.new(AUDIT_KEY, text, hashlib.sha256).hexdigest()[:16]
+    key = os.environ["HARBOR_AUDIT_KEY"].encode()    # secret, never in Git
+    return "hmac:" + hmac.new(key, text, hashlib.sha256).hexdigest()[:16]
+
+
+def record_result(context, name, result_text):
+    """Every tool result enters the context as untrusted data, even empty."""
+    context.append({"role": "tool", "source": name, "trust": "untrusted",
+                    "text": result_text})
 
 
 def must_hold(name, context):
@@ -136,7 +141,7 @@ def raw_call(url, token, name, args):
     return httpx.post(url, json=body, headers=headers)
 
 
-async def call(client, name, args):
+async def call(client, name, args, context):
     with tracer.start_as_current_span(
             f"execute_tool {name}", attributes={
                 "gen_ai.operation.name": "execute_tool",
@@ -147,10 +152,14 @@ async def call(client, name, args):
         result = await client.call_tool(name, args)
         audit(event="tool_call", tool=name, args=digest(name, args),
               decision="allowed", error=result.is_error)
+        record_result(context, name,
+                      result.content[0].text if result.content else "")
         return result
 
 
 async def main():
+    if len(os.environ.get("HARBOR_AUDIT_KEY", "")) < 32:
+        raise SystemExit("set HARBOR_AUDIT_KEY to a secret of 32+ characters")
     for name in ("audit.jsonl", "trace.jsonl"):
         (OUT / name).write_text("")
     token = issuer.mint("harbor-assistant")
@@ -166,17 +175,15 @@ async def main():
         print(f'1. rosa: "{context[0]["text"]}"')
         async with connect(token) as client:
             order = await call(client, "get_order_status",
-                               {"order_id": "ord-5003"})
+                               {"order_id": "ord-5003"}, context)
             print(f"2. get_order_status ord-5003: "
                   f"{order.structured_content['status']}")
             reviews = await call(client, "list_reviews",
-                                 {"book_id": "bk-1003"})
+                                 {"book_id": "bk-1003"}, context)
         items = json.loads(reviews.content[0].text)
         print(f"3. list_reviews bk-1003: {len(items)} reviews, "
               f"tagged untrusted")
         for review in items:
-            context.append({"role": "tool", "source": "list_reviews",
-                            "trust": "untrusted", "text": review["text"]})
             hit = SUSPECT.search(review["text"])
             if hit:
                 audit(event="untrusted_instruction", tool="list_reviews",

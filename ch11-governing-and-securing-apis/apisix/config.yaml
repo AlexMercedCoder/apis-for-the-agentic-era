@@ -12,6 +12,10 @@ apisix:
   enable_control: false
 nginx_config:
   error_log_level: warn
+  http:
+    # nginx would read Mcp_Method as Mcp-Method and join the two values;
+    # the MCP server reads them as different headers. Ignore underscores.
+    underscores_in_headers: "off"
 plugin_attr:
   prometheus:
     export_addr:

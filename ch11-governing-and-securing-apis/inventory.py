@@ -1,6 +1,6 @@
 """Compare what Harbor serves, what its contract says, and what the gateway
 routes, and report the gaps: shadow routes (served, in no contract) and
-deprecated routes still taking traffic (zombies once their Sunset passes).
+deprecated routes still answering traffic (2xx and 3xx) (zombies once their Sunset passes).
 
     uv run python inventory.py [gateway access log]
 """
@@ -34,7 +34,8 @@ for route in gateway["routes"]:
                .get("headers", {}).get("set", {}))
     if "Sunset" in headers:
         prefix = re.sub(r"\*$", "", route["uri"])
-        used = [h for h in hits if h.get("uri", "").startswith(prefix)]
+        used = [h for h in hits if h.get("uri", "").startswith(prefix)
+                and str(h.get("status", "")).startswith(("2", "3"))]
         callers = sorted({h.get("consumer", "-") for h in used})
         print(f"deprecated: {route['uri']}, Sunset {headers['Sunset']}")
         print(f"  still called: {len(used)} times, by "
