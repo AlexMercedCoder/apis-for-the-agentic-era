@@ -1,0 +1,15 @@
+Harbor SOAP service on http://127.0.0.1:8002/harbor/soap
+"POST /harbor/soap HTTP/1.1" 200 action=GetOrderStatus
+"POST /harbor/soap HTTP/1.1" 500 action=GetOrderStatus
+"POST /harbor/soap HTTP/1.1" 200 action=GetBook
+"POST /harbor/soap HTTP/1.1" 500 action=GetBook
+"POST /harbor/soap HTTP/1.1" 500 action=GetOrderStatus
+"GET /harbor/soap?wsdl HTTP/1.1" 200 action=-
+"POST /harbor/soap HTTP/1.1" 200 action=GetOrderStatus
+"GET /harbor/soap?wsdl HTTP/1.1" 200 action=-
+"POST /harbor/soap HTTP/1.1" 500 action=GetOrderStatus
+"GET /harbor/soap?wsdl HTTP/1.1" 200 action=-
+"POST /harbor/soap HTTP/1.1" 500 action=GetOrderStatus
+"GET /harbor/soap?wsdl HTTP/1.1" 200 action=-
+"POST /harbor/soap HTTP/1.1" 200 action=GetOrderStatus
+"POST /harbor/soap HTTP/1.1" 500 action=GetOrderStatus

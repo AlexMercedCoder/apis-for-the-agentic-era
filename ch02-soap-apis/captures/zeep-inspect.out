@@ -1,0 +1,73 @@
+
+Prefixes:
+     xsd: http://www.w3.org/2001/XMLSchema
+     ns0: http://harbor.example/orders
+
+Global elements:
+     ns0:GetBook(bookId: ns0:BookId)
+     ns0:GetBookResponse(bookId: ns0:BookId, title: xsd:string, author: xsd:string, priceCents: xsd:int, currency: xsd:string, inStock: xsd:int)
+     ns0:GetOrderStatus(orderId: ns0:OrderId)
+     ns0:GetOrderStatusResponse(orderId: ns0:OrderId, status: ns0:OrderStatus, placedAt: xsd:dateTime, totalCents: xsd:int, currency: xsd:string)
+     ns0:NotFound(id: xsd:string, hint: xsd:string)
+     
+
+Global types:
+     xsd:anyType
+     ns0:BookId
+     ns0:OrderId
+     ns0:OrderStatus
+     xsd:ENTITIES
+     xsd:ENTITY
+     xsd:ID
+     xsd:IDREF
+     xsd:IDREFS
+     xsd:NCName
+     xsd:NMTOKEN
+     xsd:NMTOKENS
+     xsd:NOTATION
+     xsd:Name
+     xsd:QName
+     xsd:anySimpleType
+     xsd:anyURI
+     xsd:base64Binary
+     xsd:boolean
+     xsd:byte
+     xsd:date
+     xsd:dateTime
+     xsd:decimal
+     xsd:double
+     xsd:duration
+     xsd:float
+     xsd:gDay
+     xsd:gMonth
+     xsd:gMonthDay
+     xsd:gYear
+     xsd:gYearMonth
+     xsd:hexBinary
+     xsd:int
+     xsd:integer
+     xsd:language
+     xsd:long
+     xsd:negativeInteger
+     xsd:nonNegativeInteger
+     xsd:nonPositiveInteger
+     xsd:normalizedString
+     xsd:positiveInteger
+     xsd:short
+     xsd:string
+     xsd:time
+     xsd:token
+     xsd:unsignedByte
+     xsd:unsignedInt
+     xsd:unsignedLong
+     xsd:unsignedShort
+
+Bindings:
+     Soap11Binding: {http://harbor.example/orders}OrdersSoapBinding
+
+Service: HarborOrdersService
+     Port: OrdersPort (Soap11Binding: {http://harbor.example/orders}OrdersSoapBinding)
+         Operations:
+            GetBook(bookId: ns0:BookId) -> bookId: ns0:BookId, title: xsd:string, author: xsd:string, priceCents: xsd:int, currency: xsd:string, inStock: xsd:int
+            GetOrderStatus(orderId: ns0:OrderId) -> orderId: ns0:OrderId, status: ns0:OrderStatus, placedAt: xsd:dateTime, totalCents: xsd:int, currency: xsd:string
+

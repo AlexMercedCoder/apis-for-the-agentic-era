@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Harbor Books order service, written contract-first: this file came
+     before harbor_soap.py, and the server and every client follow it.
+     WSDL 1.1, SOAP 1.1 over HTTP, document/literal wrapped. -->
+<definitions name="HarborOrders"
+    targetNamespace="http://harbor.example/orders"
+    xmlns="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:h="http://harbor.example/orders">
+
+  <types>
+    <xs:schema targetNamespace="http://harbor.example/orders"
+               elementFormDefault="qualified">
+
+      <xs:simpleType name="OrderId">
+        <xs:restriction base="xs:string">
+          <xs:pattern value="ord-[0-9]{4}"/>
+        </xs:restriction>
+      </xs:simpleType>
+
+      <xs:simpleType name="BookId">
+        <xs:restriction base="xs:string">
+          <xs:pattern value="bk-[0-9]{4}"/>
+        </xs:restriction>
+      </xs:simpleType>
+
+      <xs:simpleType name="OrderStatus">
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="placed"/>
+          <xs:enumeration value="paid"/>
+          <xs:enumeration value="shipped"/>
+          <xs:enumeration value="delivered"/>
+          <xs:enumeration value="cancelled"/>
+        </xs:restriction>
+      </xs:simpleType>
+
+      <xs:element name="GetOrderStatus">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="orderId" type="h:OrderId"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="GetOrderStatusResponse">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="orderId" type="h:OrderId"/>
+            <xs:element name="status" type="h:OrderStatus"/>
+            <xs:element name="placedAt" type="xs:dateTime"/>
+            <xs:element name="totalCents" type="xs:int"/>
+            <xs:element name="currency" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="GetBook">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="bookId" type="h:BookId"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="GetBookResponse">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="bookId" type="h:BookId"/>
+            <xs:element name="title" type="xs:string"/>
+            <xs:element name="author" type="xs:string"/>
+            <xs:element name="priceCents" type="xs:int"/>
+            <xs:element name="currency" type="xs:string"/>
+            <xs:element name="inStock" type="xs:int"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="NotFound">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="id" type="xs:string"/>
+            <xs:element name="hint" type="xs:string"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+  </types>
+
+  <message name="GetOrderStatusInput">
+    <part name="parameters" element="h:GetOrderStatus"/>
+  </message>
+  <message name="GetOrderStatusOutput">
+    <part name="parameters" element="h:GetOrderStatusResponse"/>
+  </message>
+  <message name="GetBookInput">
+    <part name="parameters" element="h:GetBook"/>
+  </message>
+  <message name="GetBookOutput">
+    <part name="parameters" element="h:GetBookResponse"/>
+  </message>
+  <message name="NotFoundFault">
+    <part name="fault" element="h:NotFound"/>
+  </message>
+
+  <portType name="OrdersPortType">
+    <operation name="GetOrderStatus">
+      <documentation>Report where one order is: its status, when it was
+        placed, and its total. Read-only. Requires a WS-Security
+        UsernameToken for a Harbor partner account.</documentation>
+      <input message="h:GetOrderStatusInput"/>
+      <output message="h:GetOrderStatusOutput"/>
+      <fault name="NotFound" message="h:NotFoundFault"/>
+    </operation>
+    <operation name="GetBook">
+      <documentation>Look up one book in the catalog by its ID.
+        Read-only. No credentials needed.</documentation>
+      <input message="h:GetBookInput"/>
+      <output message="h:GetBookOutput"/>
+      <fault name="NotFound" message="h:NotFoundFault"/>
+    </operation>
+  </portType>
+
+  <binding name="OrdersSoapBinding" type="h:OrdersPortType">
+    <soap:binding style="document"
+                  transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="GetOrderStatus">
+      <soap:operation
+          soapAction="http://harbor.example/orders/GetOrderStatus"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+      <fault name="NotFound">
+        <soap:fault name="NotFound" use="literal"/>
+      </fault>
+    </operation>
+    <operation name="GetBook">
+      <soap:operation
+          soapAction="http://harbor.example/orders/GetBook"/>
+      <input><soap:body use="literal"/></input>
+      <output><soap:body use="literal"/></output>
+      <fault name="NotFound">
+        <soap:fault name="NotFound" use="literal"/>
+      </fault>
+    </operation>
+  </binding>
+
+  <service name="HarborOrdersService">
+    <port name="OrdersPort" binding="h:OrdersSoapBinding">
+      <soap:address location="http://127.0.0.1:8002/harbor/soap"/>
+    </port>
+  </service>
+</definitions>

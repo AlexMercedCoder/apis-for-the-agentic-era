@@ -1,0 +1,20 @@
+*   Trying 127.0.0.1:8002...
+* Connected to 127.0.0.1 (127.0.0.1) port 8002 (#0)
+> POST /harbor/soap HTTP/1.1
+> Host: 127.0.0.1:8002
+> User-Agent: curl/7.81.0
+> Accept: */*
+> Content-Type: text/xml; charset=utf-8
+> SOAPAction: "http://harbor.example/orders/GetOrderStatus"
+> Content-Length: 740
+> 
+} [740 bytes data]
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Server: harbor-ch02/0.1
+< Date: Wed, 11 Nov 2026 03:17:20 GMT
+< Content-Type: text/xml; charset="utf-8"
+< Content-Length: 466
+< 
+{ [466 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

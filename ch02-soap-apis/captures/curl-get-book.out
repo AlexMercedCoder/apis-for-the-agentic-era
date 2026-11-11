@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope
+    xmlns:h="http://harbor.example/orders"
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <h:GetBookResponse>
+      <h:bookId>bk-1001</h:bookId>
+      <h:title>Moby-Dick</h:title>
+      <h:author>Herman Melville</h:author>
+      <h:priceCents>1499</h:priceCents>
+      <h:currency>USD</h:currency>
+      <h:inStock>7</h:inStock>
+    </h:GetBookResponse>
+  </soap:Body>
+</soap:Envelope>
+200

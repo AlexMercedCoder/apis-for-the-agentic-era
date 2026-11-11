@@ -1,0 +1,37 @@
+--- tool definition
+{
+  "name": "get_order_status",
+  "description": "Report where one order is: its status, when it was placed, and its total. Read-only. Status is one of: placed, paid, shipped, delivered, cancelled.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "order_id": {
+        "type": "string",
+        "description": "Harbor order ID, such as ord-5001",
+        "pattern": "^ord-[0-9]{4}$"
+      }
+    },
+    "required": [
+      "order_id"
+    ]
+  }
+}
+--- {"order_id": "ord-5002"} is_error=false
+{
+  "order_id": "ord-5002",
+  "status": "shipped",
+  "placed_at": "2026-11-03T09:41:52+00:00",
+  "total_cents": 4897,
+  "currency": "USD"
+}
+--- {"order_id": "ord-9999"} is_error=true
+{
+  "error": "order_not_found",
+  "message": "No order with id ord-9999.",
+  "hint": "Order IDs run from ord-5001 to ord-5004."
+}
+--- {"order_id": "5002"} is_error=true
+{
+  "error": "invalid_argument",
+  "message": "order_id must look like ord-5001."
+}

@@ -1,0 +1,11 @@
+[project]
+name = "harbor-ch02"
+version = "0.1.0"
+description = "Chapter 2: Harbor Books as a SOAP service with a WSDL"
+requires-python = ">=3.13"
+dependencies = [
+    "zeep==4.3.3",
+]
+
+[tool.uv]
+package = false

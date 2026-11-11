@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:h="http://harbor.example/orders">
+  <soap:Body>
+    <h:GetBook>
+      <h:bookId>bk-1001</h:bookId>
+    </h:GetBook>
+  </soap:Body>
+</soap:Envelope>

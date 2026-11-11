@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <soap:Fault>
+      <faultcode>soap:MustUnderstand</faultcode>
+      <faultstring>Header {http://partner.example/tracing}Trace was not understood.</faultstring>
+    </soap:Fault>
+  </soap:Body>
+</soap:Envelope>
+500

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope
+    xmlns:h="http://harbor.example/orders"
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <soap:Fault>
+      <faultcode>soap:Client</faultcode>
+      <faultstring>No order with id ord-9999.</faultstring>
+      <detail>
+        <h:NotFound>
+          <h:id>ord-9999</h:id>
+          <h:hint>Order IDs run from ord-5001 to ord-5004.</h:hint>
+        </h:NotFound>
+      </detail>
+    </soap:Fault>
+  </soap:Body>
+</soap:Envelope>

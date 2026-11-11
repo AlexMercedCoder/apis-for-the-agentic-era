@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope
+    xmlns:h="http://harbor.example/orders"
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <h:GetOrderStatusResponse>
+      <h:orderId>ord-5002</h:orderId>
+      <h:status>shipped</h:status>
+      <h:placedAt>2026-11-03T09:41:52Z</h:placedAt>
+      <h:totalCents>4897</h:totalCents>
+      <h:currency>USD</h:currency>
+    </h:GetOrderStatusResponse>
+  </soap:Body>
+</soap:Envelope>
