@@ -41,6 +41,28 @@ SCOPES = ["orders:read", "orders:write"]
 ALGORITHMS = ["RS256"]            # what this issuer signs with, and only that
 DPOP_ALGORITHMS = ["ES256"]
 DPOP_WINDOW = 60                  # seconds a proof stays acceptable
+DPOP_SKEW = 5                     # seconds a client clock may run ahead
+ACCESS_TYPES = {"at+jwt", "application/at+jwt"}   # RFC 9068 section 4
+
+# Fixed descriptions: nothing from the token is ever echoed back, so a
+# sender can't inject parameters into WWW-Authenticate (RFC 6750 sec. 3).
+TOKEN_ERRORS = [
+    (jwt.ExpiredSignatureError, "token expired"),
+    (jwt.InvalidAudienceError, "audience mismatch"),
+    (jwt.InvalidIssuerError, "issuer mismatch"),
+    (jwt.InvalidAlgorithmError, "algorithm not allowed"),
+    (jwt.InvalidSignatureError, "signature verification failed"),
+    (jwt.MissingRequiredClaimError, "required claim missing"),
+    (jwt.PyJWKClientError, "unknown signing key"),
+    (jwt.DecodeError, "malformed token"),
+]
+
+
+def describe(exc: Exception) -> str:
+    for kind, text in TOKEN_ERRORS:
+        if isinstance(exc, kind):
+            return text
+    return "invalid token"
 
 METADATA = {
     "resource": RESOURCE,
@@ -82,17 +104,25 @@ class Validator:
         if meta["issuer"] != ISSUER:      # the document must name itself
             raise SystemExit("issuer mismatch in discovery metadata")
         self.keys = jwt.PyJWKClient(meta["jwks_uri"], cache_keys=True)
-        self.seen_jti = {}                # DPoP proof replay cache
+        # DPoP replay cache: jti -> time it stops being acceptable. In
+        # memory, so it covers one process. Several instances need a
+        # shared store (or DPoP server nonces, RFC 9449 section 8).
+        self.seen_jti = {}
 
     def access_token(self, token: str) -> dict:
         try:
+            head = jwt.get_unverified_header(token)
+            if head.get("alg") not in ALGORITHMS:
+                raise jwt.InvalidAlgorithmError()
+            if str(head.get("typ", "")).lower() not in ACCESS_TYPES:
+                raise Denied(401, "invalid_token", "not an access token")
             key = self.keys.get_signing_key_from_jwt(token)
             return jwt.decode(
                 token, key.key, algorithms=ALGORITHMS, audience=RESOURCE,
                 issuer=ISSUER,
                 options={"require": ["exp", "iat", "iss", "aud", "sub"]})
         except jwt.PyJWTError as exc:
-            raise Denied(401, "invalid_token", str(exc)) from None
+            raise Denied(401, "invalid_token", describe(exc)) from None
 
     def dpop_proof(self, proof: str, method: str, url: str, token: str,
                    jkt: str):
@@ -110,17 +140,22 @@ class Validator:
                              dpop=True)
             key = jwt.PyJWK(jwk, algorithm=head["alg"]).key
             claims = jwt.decode(proof, key, algorithms=DPOP_ALGORITHMS,
+                                leeway=DPOP_SKEW,
                                 options={"require": ["jti", "htm", "htu",
                                                      "iat", "ath"]})
         except jwt.PyJWTError as exc:
-            raise Denied(401, "invalid_dpop_proof", str(exc),
+            raise Denied(401, "invalid_dpop_proof", describe(exc),
+                         dpop=True) from None
+        except (KeyError, TypeError, ValueError):
+            raise Denied(401, "invalid_dpop_proof", "malformed proof",
                          dpop=True) from None
         now = time.time()
         checks = [
             (jwk_thumbprint(jwk) == jkt, "proof key is not the token's key"),
             (claims["htm"] == method, "htm does not match the method"),
             (claims["htu"] == url, "htu does not match the URL"),
-            (abs(now - claims["iat"]) <= DPOP_WINDOW, "proof too old"),
+            (now - DPOP_WINDOW <= claims["iat"] <= now + DPOP_SKEW,
+             "proof outside its time window"),
             (claims["ath"] == b64url(hashlib.sha256(token.encode()).digest()),
              "ath does not match the token"),
             (claims["jti"] not in self.seen_jti, "proof already used"),
@@ -128,9 +163,9 @@ class Validator:
         for passed, why in checks:
             if not passed:
                 raise Denied(401, "invalid_dpop_proof", why, dpop=True)
-        self.seen_jti = {j: t for j, t in self.seen_jti.items()
-                         if t > now - DPOP_WINDOW}
-        self.seen_jti[claims["jti"]] = now
+        # Keep each jti until its proof could no longer be accepted.
+        self.seen_jti = {j: t for j, t in self.seen_jti.items() if t > now}
+        self.seen_jti[claims["jti"]] = claims["iat"] + DPOP_WINDOW
 
 
 def needs(method: str, path: str):
@@ -157,10 +192,17 @@ class TokenGate:
         wanted = needs(method, path)
         if wanted is None:
             return await self.inner(scope, receive, send)
-        headers = {k.decode().lower(): v.decode()
-                   for k, v in scope["headers"]}
+        headers, seen = {}, []
+        for k, v in scope["headers"]:
+            name = k.decode().lower()
+            seen.append(name)
+            headers[name] = v.decode()
         bound = False
         try:
+            for single in ("authorization", "dpop"):
+                if seen.count(single) > 1:   # RFC 9110 5.3, RFC 9449 4.3
+                    raise Denied(400, "invalid_request",
+                                 f"more than one {single} header")
             claims = self.authenticate(method, path, headers, wanted)
             bound = "cnf" in claims
             granted = set(claims.get("scope", "").split())
@@ -173,11 +215,16 @@ class TokenGate:
             if customer is None and not any_order:
                 raise Denied(403, None, "token is not for a customer")
             match = ORDER_PATH.match(path)
-            if match and not any_order:
+            if match:
                 order = harbor_api.store.orders.get(match.group(1))
-                if order is not None and order["customer_id"] != customer:
+                missing = order is None
+                foreign = (not missing and not any_order
+                           and order["customer_id"] != customer)
+                if missing or foreign:
+                    # One 404, byte for byte, whether the order is missing
+                    # or someone else's, and no hint listing valid IDs.
                     self.log(scope, 404, f"caller={self.who(claims)} "
-                                         "not-owner")
+                             + ("not-owner" if foreign else "missing"))
                     return await self.not_found(scope, send, match.group(1))
             if method == "POST" and path == "/orders":
                 body, receive = await self.read_body(receive)
@@ -201,7 +248,12 @@ class TokenGate:
         if scheme not in ("bearer", "dpop") or not token:
             raise Denied(401, None, "no access token", scope=wanted)
         claims = self.validator.access_token(token)
-        jkt = claims.get("cnf", {}).get("jkt")
+        cnf = claims.get("cnf", {})
+        if set(cnf) - {"jkt", "kc-jkt-type"}:
+            # Bound some way Harbor can't check (an mTLS x5t#S256, say):
+            # refuse it rather than treat it as a bearer token.
+            raise Denied(401, "invalid_token", "unsupported token binding")
+        jkt = cnf.get("jkt")
         if jkt is None and scheme == "dpop":
             raise Denied(401, "invalid_token", "token is not DPoP-bound",
                          dpop=True)
@@ -239,7 +291,7 @@ class TokenGate:
         return body, replay
 
     async def not_found(self, scope, send, order_id):
-        """Someone else's order gets the same 404 as a missing one."""
+        """The one 404 for an order this caller can't see."""
         body = json.dumps({
             "type": "https://harbor.example/problems/order-not-found",
             "title": "Order not found", "status": 404,

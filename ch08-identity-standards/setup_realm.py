@@ -116,6 +116,10 @@ def main():
     ]
     ids = {}
     for body in clients:
+        # Access tokens typed at+jwt (RFC 9068), so an API can tell them
+        # from ID tokens; Keycloak's default header type is plain JWT.
+        body.setdefault("attributes", {})[
+            "access.token.header.type.rfc9068"] = "true"
         ok(kc.post(f"/{REALM}/clients", json=body))
         found = ok(kc.get(f"/{REALM}/clients",
                           params={"clientId": body["clientId"]})).json()

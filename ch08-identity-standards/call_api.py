@@ -6,13 +6,29 @@ order.
     uv run python code_flow.py rosa && uv run python call_api.py
 """
 
-import base64
+import hashlib
+import hmac
 import json
 from pathlib import Path
 
 import httpx
+import jwt
 
-from oauth import API, b64url, claims, header, show
+from oauth import API, b64url, claims, discover, header, show
+
+def hs256_with_public_key(real_header, body):
+    """The key-confusion forgery: HMAC keyed with the issuer's RSA public
+    key in PEM form, which a library that trusts alg would accept."""
+    from cryptography.hazmat.primitives import serialization
+    jwks = httpx.get(discover()["jwks_uri"]).json()
+    jwk = next(k for k in jwks["keys"] if k["kid"] == real_header["kid"])
+    pem = jwt.PyJWK(jwk).key.public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo)
+    head = b64url(json.dumps(real_header | {"alg": "HS256"}).encode())
+    mac = hmac.new(pem, f"{head}.{body}".encode(), hashlib.sha256).digest()
+    return f"{head}.{body}.{b64url(mac)}"
+
 
 TOKENS = json.loads(Path(__file__).with_name("tokens.json").read_text())
 
@@ -51,16 +67,29 @@ def main():
     print("\n== tokens that must fail")
     one_line("ID token as access token", get("/orders/ord-5003", id_token))
     head, body, sig = access.split(".")
-    none = b64url(json.dumps({"alg": "none", "typ": "JWT"}).encode())
+    real = header(access)        # forgeries reuse the real kid and typ
+    none = b64url(json.dumps(real | {"alg": "none"}).encode())
     one_line("alg none, no signature",
              get("/orders/ord-5003", f"{none}.{body}."))
+    one_line("HS256, public key as secret",
+             get("/orders/ord-5003", hs256_with_public_key(real, body)))
     edited = claims(access) | {"customer_id": "cus-002"}
     edited = b64url(json.dumps(edited).encode())
     one_line("payload edited", get("/orders/ord-5002",
                                    f"{head}.{edited}.{sig}"))
+    resp = httpx.get(API + "/orders/ord-5003", headers=[
+        ("Authorization", "Bearer x"), ("Authorization", f"Bearer {access}")])
+    one_line("two Authorization headers", resp)
 
     print("\n== Sam's order with Rosa's token")
-    print(show(get("/orders/ord-5002", access)))
+    theirs = get("/orders/ord-5002", access)
+    print(show(theirs))
+    missing = get("/orders/ord-9999", access)
+    same = (theirs.status_code == missing.status_code
+            and list(theirs.headers.keys()) == list(missing.headers.keys())
+            and theirs.content.replace(b"5002", b"9999") == missing.content)
+    print(f"ord-9999, which doesn't exist: {missing.status_code}, "
+          f"same headers and body apart from the ID: {same}")
 
     print("\n== an order for another customer")
     order = json.loads((Path(__file__).parent.parent / "ch03-rest-apis"

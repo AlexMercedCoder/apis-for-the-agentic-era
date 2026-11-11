@@ -1,5 +1,5 @@
 """Refresh tokens rotate in Harbor's setup, and reusing one ends the
-session. A JWT the API checks locally keeps working until it expires;
+storefront's session with Keycloak (Rosa's own login session survives). A JWT the API checks locally keeps working until it expires;
 introspection (RFC 7662) sees the session is gone at once.
 
 Uses the `reader` login that run.sh makes before Rosa's main one.

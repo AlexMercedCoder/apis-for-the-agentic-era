@@ -43,13 +43,10 @@ curl -s http://127.0.0.1:8008/.well-known/oauth-protected-resource \
   > "$OUT/protected-resource.json"
 
 # 3. The flows. A reader token (orders:read only) first, then Rosa's.
-uv run -q python code_flow.py rosa "openid orders:read" > /dev/null
-python3 - <<'PY'
-import json
-t = json.load(open("tokens.json")); t["reader"] = t.pop("rosa")
-json.dump(t, open("tokens.json", "w"))
-PY
+uv run -q python code_flow.py rosa "openid orders:read" reader --quiet
 uv run -q python code_flow.py rosa > "$OUT/code-flow.out"
+uv run -q python code_flow.py rosa \
+  "openid delegation:client:harbor-assistant" assistant-grant --quiet
 uv run -q python refresh_demo.py > "$OUT/refresh.out"
 uv run -q python call_api.py > "$OUT/call-api.out"
 uv run -q python fulfillment.py > "$OUT/fulfillment.out"

@@ -1,3 +1,15 @@
+== 0. the grant the storefront gives the assistant
+{
+  "aud": "harbor-assistant",
+  "azp": "harbor-storefront",
+  "scope": "openid delegation:client:harbor-assistant profile",
+  "may_act": {
+    "sub": "111b6b71-0749-4528-9dd5-e4f602b8e3ff",
+    "client_id": "harbor-assistant"
+  }
+}
+the grant sent straight to Harbor: 401 audience mismatch
+
 == 1. the assistant's own token (client credentials)
 POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
 Host: 127.0.0.1:8080
@@ -11,7 +23,7 @@ cache-control: no-store
 content-type: application/json
 
 {
-  "access_token": "<JWT 758 chars>",
+  "access_token": "<JWT 762 chars>",
   "expires_in": 300,
   "refresh_expires_in": 0,
   "token_type": "Bearer",
@@ -19,7 +31,7 @@ content-type: application/json
   "scope": ""
 }
 
-== 2. token exchange: Rosa's token in, a delegated token out
+== 2. token exchange: Rosa's grant in, a delegated token out
 POST /realms/harbor/protocol/openid-connect/token HTTP/1.1
 Host: 127.0.0.1:8080
 DPoP: <JWT 508 chars>
@@ -27,9 +39,9 @@ Content-Type: application/x-www-form-urlencoded
 Authorization: Basic <client_id:client_secret>
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange&
-subject_token=<JWT 1275 chars>&
+subject_token=<JWT 1179 chars>&
 subject_token_type=urn:ietf:params:oauth:token-type:access_token&
-actor_token=<JWT 758 chars>&
+actor_token=<JWT 762 chars>&
 actor_token_type=urn:ietf:params:oauth:token-type:access_token&
 scope=orders:read
 
@@ -38,8 +50,8 @@ cache-control: no-store
 content-type: application/json
 
 {
-  "access_token": "<JWT 1062 chars>",
-  "expires_in": 299,
+  "access_token": "<JWT 1066 chars>",
+  "expires_in": 298,
   "refresh_expires_in": 0,
   "token_type": "DPoP",
   "not-before-policy": 0,
@@ -47,18 +59,18 @@ content-type: application/json
   "issued_token_type": "urn:ietf:params:oauth:token-type:access_token"
 }
 {
-  "exp": 1794385798,
+  "exp": 1794387775,
   "iss": "http://127.0.0.1:8080/realms/harbor",
   "aud": "http://127.0.0.1:8008",
-  "sub": "3a03a554-5de5-45c1-bcdf-efb8db42e379",
+  "sub": "aa85c2ea-00d3-4e37-a3c9-6dd900f30805",
   "azp": "harbor-assistant",
   "cnf": {
-    "jkt": "p109ih0pbH88_7KuT6kuOA-PwseNdaZ43vOOEd7UbrI",
+    "jkt": "6iRw_K1nIOfa4SRcAxf_ssRQGiOnxK5JmydGSVgQucs",
     "kc-jkt-type": "DPoP"
   },
   "scope": "orders:read",
   "act": {
-    "sub": "d98a6b6d-6ab0-4d09-849b-943a2baf80b9",
+    "sub": "111b6b71-0749-4528-9dd5-e4f602b8e3ff",
     "client_id": "harbor-assistant"
   },
   "customer_id": "cus-001"
@@ -67,7 +79,7 @@ content-type: application/json
 == 3. the assistant reads Rosa's order with a fresh proof
 GET /orders/ord-5003 HTTP/1.1
 Host: 127.0.0.1:8008
-Authorization: DPoP <JWT 1062 chars>
+Authorization: DPoP <JWT 1066 chars>
 DPoP: <JWT 539 chars>
 
 HTTP/1.1 200 OK
@@ -81,7 +93,7 @@ content-type: application/json
 == 4. a thief with the token but not the key
 GET /orders/ord-5003 HTTP/1.1
 Host: 127.0.0.1:8008
-Authorization: Bearer <JWT 1062 chars>
+Authorization: Bearer <JWT 1066 chars>
 
 HTTP/1.1 401 Unauthorized
 content-type: application/problem+json

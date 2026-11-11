@@ -1,15 +1,20 @@
 """Harbor's assistant acts for Rosa through token exchange (RFC 8693).
 
+0. The storefront asks Keycloak for a token just for the assistant, with
+   only the delegation scope, so its only audience is the assistant and
+   Harbor refuses it. The assistant never holds Rosa's storefront token.
 1. The assistant authenticates as itself (client credentials) to get an
    actor token.
-2. It exchanges Rosa's access token, plus its actor token, for a new token
+2. It exchanges that grant, plus its actor token, for a new token
    that names Rosa as the subject and the assistant as the actor (`act`),
    narrowed to orders:read, and bound to a key the assistant holds (DPoP,
    RFC 9449).
 3. It calls Harbor with that token and a fresh DPoP proof, and then shows
    what a thief holding only the token, or a replayed proof, gets.
 
-    uv run python code_flow.py rosa && uv run python agent_exchange.py
+    uv run python code_flow.py rosa \
+        "openid delegation:client:harbor-assistant" assistant-grant --quiet
+    uv run python agent_exchange.py
 """
 
 import hashlib
@@ -51,6 +56,16 @@ def main():
     meta = discover()
     token_url = meta["token_endpoint"]
     key = DPoPKey()
+    grant = TOKENS["assistant-grant"]["access_token"]
+    url = f"{API}/orders/ord-5003"
+
+    print("== 0. the grant the storefront gives the assistant")
+    picked = {k: v for k, v in claims(grant).items()
+              if k in ("aud", "azp", "scope", "may_act")}
+    print(json.dumps(picked, indent=2))
+    direct = httpx.get(url, headers={"Authorization": f"Bearer {grant}"})
+    print(f"the grant sent straight to Harbor: {direct.status_code} "
+          f"{direct.json()['detail']}\n")
 
     print("== 1. the assistant's own token (client credentials)")
     actor = httpx.post(token_url, data={"grant_type": "client_credentials"},
@@ -58,11 +73,11 @@ def main():
     print(show(actor))
     actor = actor.raise_for_status().json()["access_token"]
 
-    print("\n== 2. token exchange: Rosa's token in, a delegated token out")
+    print("\n== 2. token exchange: Rosa's grant in, a delegated token out")
     resp = httpx.post(token_url, auth=("harbor-assistant", SECRET),
                       headers={"DPoP": key.proof("POST", token_url)},
                       data={"grant_type": EXCHANGE,
-                            "subject_token": TOKENS["rosa"]["access_token"],
+                            "subject_token": grant,
                             "subject_token_type": ACCESS,
                             "actor_token": actor,
                             "actor_token_type": ACCESS,
@@ -74,7 +89,6 @@ def main():
                        "act", "cnf", "exp")}
     print(json.dumps(picked, indent=2))
 
-    url = f"{API}/orders/ord-5003"
     print("\n== 3. the assistant reads Rosa's order with a fresh proof")
     proof = key.proof("GET", url, delegated)
     resp = httpx.get(url, headers={"Authorization": f"DPoP {delegated}",

@@ -444,14 +444,18 @@ check "ch08: PKCE: wrong verifier refused, right one gets three tokens" \
            grep -q '\"id_token\": \"<JWT' '$CH08/code-flow.out' &&
            grep -q '&iss=http://127.0.0.1:8080/realms/harbor' '$CH08/code-flow.out' &&
            grep -q 'code_challenge_method=S256' '$CH08/code-flow.out'"
-check "ch08: refresh reuse ends the session; only introspection sees it" \
+check "ch08: refresh reuse ends the client session; only introspection sees it" \
   bash -c "grep -q 'same token again:   400 invalid_grant' '$CH08/refresh.out' &&
            grep -q 'Harbor, checking the JWT:    200' '$CH08/refresh.out' &&
            grep -q 'active=False' '$CH08/refresh.out'"
 check "ch08: bad tokens get 401, others' orders 404, missing scope 403" \
-  bash -c "grep -q 'ID token as access token     401  Audience doesn' '$CH08/call-api.out' &&
-           grep -q 'alg none, no signature       401' '$CH08/call-api.out' &&
-           grep -q 'payload edited               401  Signature verification failed' '$CH08/call-api.out' &&
+  bash -c "grep -q 'ID token as access token     401  not an access token' '$CH08/call-api.out' &&
+           grep -q 'alg none, no signature       401  algorithm not allowed' '$CH08/call-api.out' &&
+           grep -q 'HS256, public key as secret  401  algorithm not allowed' '$CH08/call-api.out' &&
+           grep -q 'two Authorization headers    400' '$CH08/call-api.out' &&
+           grep -q 'same headers and body apart from the ID: True' '$CH08/call-api.out' &&
+           grep -q '\"typ\": \"at+jwt\"' '$CH08/call-api.out' &&
+           grep -q 'payload edited               401  signature verification failed' '$CH08/call-api.out' &&
            grep -q 'ord-5002 HTTP/1.1\" 404 caller=cus-001 not-owner' '$CH08/api.log' &&
            grep -q 'insufficient_scope.*scope=\"orders:write\"' '$CH08/call-api.out' &&
            grep -q '^201 /orders/ord-5005' '$CH08/call-api.out'"
@@ -463,7 +467,8 @@ check "ch08: client credentials read any order and can't cancel" \
   bash -c "grep -q 'GET /orders/ord-5002: 200 cus-002 shipped' '$CH08/fulfillment.out' &&
            grep -q 'cancellation: 403' '$CH08/fulfillment.out'"
 check "ch08: delegated token names Rosa and the assistant, bound by DPoP" \
-  bash -c "grep -q '\"token_type\": \"DPoP\"' '$CH08/agent-exchange.out' &&
+  bash -c "grep -q 'the grant sent straight to Harbor: 401 audience mismatch' '$CH08/agent-exchange.out' &&
+           grep -q '\"token_type\": \"DPoP\"' '$CH08/agent-exchange.out' &&
            grep -q '\"client_id\": \"harbor-assistant\"' '$CH08/agent-exchange.out' &&
            grep -q '\"customer_id\": \"cus-001\"' '$CH08/agent-exchange.out' &&
            grep -q '200 caller=cus-001 act=harbor-assistant' '$CH08/api.log' &&
