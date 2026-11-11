@@ -72,6 +72,9 @@ async def payment_webhook(request: Request) -> Response:
                 note = f"{order['id']} paid"
             else:
                 note = "amount or currency mismatch, held for review"
+        elif order:
+            note = (f"{order['id']} already paid by "
+                    f"{order.get('payment_intent', '?')}, flag for refund")
     elif event["type"] == "charge.refunded":
         note = "refund recorded"
     # Record the delivery only after the state change. A real service

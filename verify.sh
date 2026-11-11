@@ -493,6 +493,25 @@ check "ch09: the order turns paid on the signed webhook; refund replayed once" \
            [ \$(grep -c 'no open order matches' '$CH09/harbor.log') -ge 2 ] &&
            [ \$(grep -c '^refund re_' '$CH09/provider.log') -eq 1 ] &&
            grep -q 'attempt 2: 200 re_[0-9a-f]* replayed=true' '$CH09/checkout.out'"
+check "ch09: a second success for a paid order is flagged; mismatches held" \
+  bash -c "cd ch09-payment-standards && uv run -q python -c \"
+import json, time, logging
+from starlette.testclient import TestClient
+import harbor_shop, webhooks
+c = TestClient(harbor_shop.app)
+def send(n, amount, currency):
+    body = json.dumps({'type': 'payment_intent.succeeded', 'data': {'object': {
+        'id': f'pi_{n}', 'amount': amount, 'currency': currency,
+        'metadata': {'order_id': 'ord-5005'}}}}).encode()
+    ts = str(int(time.time()))
+    h = {'webhook-id': f'msg_{n}', 'webhook-timestamp': ts,
+         'webhook-signature': webhooks.sign(webhooks.SECRET, f'msg_{n}', ts, body)}
+    assert c.post('/hooks/payments', content=body, headers=h).status_code == 204
+send(1, 3797, 'eur'); assert harbor_shop.orders['ord-5005']['status'] == 'placed'
+send(2, 3796, 'usd'); assert harbor_shop.orders['ord-5005']['status'] == 'placed'
+send(3, 3797, 'usd'); assert harbor_shop.orders['ord-5005']['status'] == 'paid'
+send(4, 3797, 'usd')
+\" 2>&1 | grep -q 'ord-5005 already paid by pi_3, flag for refund'"
 check "ch09: the card number never reaches Harbor" \
   bash -c "! grep -rq '4242424242424242' '$CH09/harbor.log' '$CH09/charge.http'"
 check "ch09: ACP checkout completes; the allowance refuses misuse" \
