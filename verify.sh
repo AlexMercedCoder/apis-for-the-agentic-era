@@ -673,6 +673,11 @@ check "ch11: underscore and duplicate Mcp-* headers and a spoofed sub don't bypa
            grep -q 'MCP_Protocol_Version, legacy session: 400' '$CH11/gateway-probes.out' &&
            grep -q 'Mcp-Method sent twice: 400' '$CH11/gateway-probes.out' &&
            grep -q 'each of 11 calls: \(200 \)\{10\}429' '$CH11/gateway-probes.out'"
+check "ch11: no limit, route, or log keys on a client-settable header" \
+  bash -c "t=ch11-governing-and-securing-apis/apisix/apisix.yaml.tmpl &&
+           grep -qF 'key: \"\$consumer_name \$harbor_sub\"' \$t &&
+           ! grep -qE '\\\$http_x_' \$t &&
+           grep -q 'underscores_in_headers: \"off\"' ch11-governing-and-securing-apis/apisix/config.yaml"
 check "ch11: the host holds a write after any tool result, reworded or not" \
   bash -c "cd ch11-governing-and-securing-apis && HARBOR_AUDIT_KEY=\$(printf k%.0s {1..40}) uv run -q python -c \"
 import agent_host as h
