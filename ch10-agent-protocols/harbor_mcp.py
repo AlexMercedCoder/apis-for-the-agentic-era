@@ -165,7 +165,9 @@ class KeycloakVerifier:
                 return None
             key = self.keys.get_signing_key_from_jwt(token).key
             claims = jwt.decode(token, key, algorithms=["RS256"],
-                                audience=RESOURCE, issuer=ISSUER)
+                                audience=RESOURCE, issuer=ISSUER,
+                                options={"require": ["exp", "iat", "iss",
+                                                     "aud", "sub"]})
         except jwt.PyJWTError as err:
             log.info("token refused: %s", type(err).__name__)
             return None
