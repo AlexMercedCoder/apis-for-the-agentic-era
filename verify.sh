@@ -362,7 +362,8 @@ check "ch06: malformed headers fail verification instead of crashing" \
   bash -c "cd ch06-streaming-and-event-apis && uv run -q python -c \"
 import webhooks
 for h in ({'webhook-id': 'm', 'webhook-timestamp': '²', 'webhook-signature': 'v1,x'},
-          {'webhook-id': 'm', 'webhook-timestamp': '1700000000', 'webhook-signature': 'v1,é'}):
+          {'webhook-id': 'm', 'webhook-timestamp': '1700000000', 'webhook-signature': 'v1,é'},
+          {'webhook-id': 'm', 'webhook-timestamp': '0' * 5000 + '1', 'webhook-signature': 'v1,x'}):
     try:
         webhooks.verify(webhooks.SECRET, h, b'{}', now=1700000000)
     except webhooks.InvalidWebhook:
@@ -381,6 +382,7 @@ check "ch06: AsyncAPI document valid, delivery matches it" \
            grep -q 'matches order.shipped in AsyncAPI 3.1.0' '$CH06/contract.out'"
 check "ch06: SSE resumes after Last-Event-ID 2 with event 3 only" \
   bash -c "grep -qx 'content-type: text/event-stream; charset=utf-8' '$CH06/sse-first.out' &&
+           grep -qx 'x-accel-buffering: no' '$CH06/sse-first.out' &&
            grep -qx 'id: 2' '$CH06/sse-first.out' && ! grep -qx 'id: 3' '$CH06/sse-first.out' &&
            grep -qx 'id: 3' '$CH06/sse-resume.out' && ! grep -qx 'id: 2' '$CH06/sse-resume.out' &&
            grep -qx 'event: order.shipped' '$CH06/sse-resume.out'"

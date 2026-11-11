@@ -1,14 +1,14 @@
 POST /hooks/harbor HTTP/1.1
 content-type: application/json
-webhook-id: msg_69d7eef8e09149ceb946bfe4
-webhook-timestamp: 1794378166
-webhook-signature: v1,hFGy+pOZ0nkf3kcSD/ZfjXgAXkAK+u8UdG2T3O91rl8=
+webhook-id: msg_c75d880bc1ea4c4eaaa81cc6
+webhook-timestamp: 1794378728
+webhook-signature: v1,X1MPeWcnsRnb4aKIB/dAnme6iJu4sFOXXDklDVabkIQ=
 
 {
   "type": "order.shipped",
-  "timestamp": "2026-11-11T06:22:46Z",
+  "timestamp": "2026-11-11T06:32:08Z",
   "data": {
     "order_id": "ord-5003",
-    "shipped_at": "2026-11-11T06:22:46Z"
+    "shipped_at": "2026-11-11T06:32:08Z"
   }
 }

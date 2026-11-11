@@ -1,6 +1,7 @@
 HTTP/1.1 200 OK
 content-type: text/event-stream; charset=utf-8
 cache-control: no-cache
+x-accel-buffering: no
 
 retry: 3000
 

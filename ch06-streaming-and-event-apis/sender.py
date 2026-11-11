@@ -17,10 +17,15 @@ Before any attempt the sender checks the target, because a subscriber can
 register any URL: it must be https, and every address the host resolves
 to must be public (no loopback, private, link-local, or metadata ranges).
 --allow-local-http permits http://127.0.0.1 for this demo only. The check
-runs again at send time, since DNS can change after registration, and
-httpx does not follow redirects, so a 3xx counts as a failure. A
-production sender also routes deliveries through an egress proxy that
-enforces the same rule. Retry-After is not honored in this demo.
+runs again before every attempt, since DNS can change after registration,
+and httpx does not follow redirects, so a 3xx counts as a failure.
+
+The check does not bind the connection: httpx resolves the name again
+when it connects, so a DNS-rebinding host can pass the check and then
+point the connection at an internal address. A production sender enforces
+the rule where it connects, in an egress proxy, and runs its workers in a
+subnet that can't reach internal services. Retry-After is not honored in
+this demo.
 """
 
 import argparse
@@ -40,6 +45,9 @@ URL = "http://127.0.0.1:8061/hooks/harbor"
 SCHEDULE = [0, 1, 2, 4]
 
 
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
 class UnsafeTarget(Exception):
     pass
 
@@ -54,7 +62,7 @@ def check_target(url: str, allow_local_http: bool) -> None:
         addr = ipaddress.ip_address(info[4][0])
         if local and addr.is_loopback:
             continue
-        if not addr.is_global:
+        if not addr.is_global or addr in NAT64:
             raise UnsafeTarget(f"{parsed.host} resolves to {addr}, "
                                "which is not a public address")
 

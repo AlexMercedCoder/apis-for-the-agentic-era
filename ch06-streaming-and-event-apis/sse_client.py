@@ -24,7 +24,7 @@ if args.last_event_id:
 url = f"{args.base}/orders/{args.order_id}/events"
 with httpx.stream("GET", url, headers=headers, timeout=10) as r:
     print(f"HTTP/1.1 {r.status_code} {r.reason_phrase}")
-    for name in ("content-type", "cache-control"):
+    for name in ("content-type", "cache-control", "x-accel-buffering"):
         print(f"{name}: {r.headers[name]}")
     print()
     done = False

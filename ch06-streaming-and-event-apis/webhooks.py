@@ -41,7 +41,8 @@ def verify(secret: str, headers, body: bytes, now=None) -> str:
     signatures = headers.get("webhook-signature")
     if not (msg_id and timestamp and signatures):
         raise InvalidWebhook("missing webhook headers")
-    if not (timestamp.isascii() and timestamp.isdigit()):
+    if not (timestamp.isascii() and timestamp.isdigit()
+            and len(timestamp) <= 12):
         raise InvalidWebhook("webhook-timestamp is not a number")
     now = int(time.time()) if now is None else now
     if abs(now - int(timestamp)) > TOLERANCE_SECONDS:
