@@ -1,0 +1,10 @@
+{
+  "id": "bk-1001",
+  "title": "Moby-Dick",
+  "author": "Herman Melville",
+  "first_published": 1851,
+  "format": "paperback",
+  "price_cents": 1499,
+  "currency": "USD",
+  "in_stock": 7
+}

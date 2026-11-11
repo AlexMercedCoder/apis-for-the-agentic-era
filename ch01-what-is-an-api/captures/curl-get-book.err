@@ -1,0 +1,16 @@
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000 (#0)
+> GET /books/bk-1001 HTTP/1.1
+> Host: 127.0.0.1:8000
+> User-Agent: curl/7.81.0
+> Accept: */*
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Server: harbor-ch01/0.1
+< Date: Wed, 11 Nov 2026 02:34:46 GMT
+< Content-Type: application/json
+< Content-Length: 190
+< 
+{ [190 bytes data]
+* Connection #0 to host 127.0.0.1 left intact

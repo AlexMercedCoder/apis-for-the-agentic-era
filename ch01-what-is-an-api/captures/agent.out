@@ -1,0 +1,55 @@
+--- request to POST https://api.anthropic.com/v1/messages
+{
+  "model": "claude-opus-5-5",
+  "max_tokens": 1024,
+  "tools": [
+    {
+      "name": "get_book",
+      "description": "Look up one book in the Harbor Books catalog by its ID. Returns title, author, format, price in cents, and copies in stock. Read-only.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "book_id": {
+            "type": "string",
+            "description": "Harbor book ID, such as bk-1001",
+            "pattern": "^bk-[0-9]{4}$"
+          }
+        },
+        "required": [
+          "book_id"
+        ]
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "Is bk-1001 in stock, and what does it cost?"
+    }
+  ]
+}
+--- response
+{
+  "id": "msg_standin_0001",
+  "type": "message",
+  "role": "assistant",
+  "model": "local-standin",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_standin_0001",
+      "name": "get_book",
+      "input": {
+        "book_id": "bk-1001"
+      }
+    }
+  ],
+  "stop_reason": "tool_use"
+}
+--- tool_result sent back to the model
+{
+  "type": "tool_result",
+  "tool_use_id": "toolu_standin_0001",
+  "content": "{\"id\": \"bk-1001\", \"title\": \"Moby-Dick\", \"author\": \"Herman Melville\", \"first_published\": 1851, \"format\": \"paperback\", \"price_cents\": 1499, \"currency\": \"USD\", \"in_stock\": 7}",
+  "is_error": false
+}

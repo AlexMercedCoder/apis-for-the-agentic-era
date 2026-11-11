@@ -1,0 +1,20 @@
+[
+  {
+    "id": "cus-001",
+    "name": "Rosa Delgado",
+    "email": "rosa@example.com",
+    "since": "2024-03-14"
+  },
+  {
+    "id": "cus-002",
+    "name": "Sam Okafor",
+    "email": "sam@example.com",
+    "since": "2025-01-09"
+  },
+  {
+    "id": "cus-003",
+    "name": "Mei Tanaka",
+    "email": "mei@example.com",
+    "since": "2025-11-02"
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "error": "book_not_found",
+  "message": "No book with id bk-9999.",
+  "hint": "Book IDs look like bk-1001."
+}
+404

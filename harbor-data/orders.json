@@ -1,0 +1,48 @@
+[
+  {
+    "id": "ord-5001",
+    "customer_id": "cus-001",
+    "placed_at": "2026-10-28T14:02:11Z",
+    "status": "delivered",
+    "lines": [
+      {"book_id": "bk-1001", "quantity": 1, "unit_price_cents": 1499}
+    ],
+    "total_cents": 1499,
+    "currency": "USD"
+  },
+  {
+    "id": "ord-5002",
+    "customer_id": "cus-002",
+    "placed_at": "2026-11-03T09:41:52Z",
+    "status": "shipped",
+    "lines": [
+      {"book_id": "bk-1003", "quantity": 1, "unit_price_cents": 2299},
+      {"book_id": "bk-1005", "quantity": 2, "unit_price_cents": 1299}
+    ],
+    "total_cents": 4897,
+    "currency": "USD"
+  },
+  {
+    "id": "ord-5003",
+    "customer_id": "cus-001",
+    "placed_at": "2026-11-08T18:20:05Z",
+    "status": "paid",
+    "lines": [
+      {"book_id": "bk-1002", "quantity": 1, "unit_price_cents": 1199},
+      {"book_id": "bk-1007", "quantity": 1, "unit_price_cents": 1399}
+    ],
+    "total_cents": 2598,
+    "currency": "USD"
+  },
+  {
+    "id": "ord-5004",
+    "customer_id": "cus-003",
+    "placed_at": "2026-11-09T11:15:37Z",
+    "status": "cancelled",
+    "lines": [
+      {"book_id": "bk-1006", "quantity": 1, "unit_price_cents": 1899}
+    ],
+    "total_cents": 1899,
+    "currency": "USD"
+  }
+]

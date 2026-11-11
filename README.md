@@ -6,7 +6,15 @@ Every request, response, and error printed in the book comes from running the co
 
 ## Status
 
-The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time.
+The book is being written. Chapter folders are added here as each chapter is drafted, so this repository fills in over time. Available now: `harbor-data/` and `ch01-what-is-an-api/`.
+
+To check everything that runs offline:
+
+```bash
+./verify.sh
+```
+
+It needs bash, `curl`, and [uv](https://docs.astral.sh/uv/), and touches nothing beyond `127.0.0.1`.
 
 ## Layout
 

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "bk-1001",
+    "title": "Moby-Dick",
+    "author": "Herman Melville",
+    "first_published": 1851,
+    "format": "paperback",
+    "price_cents": 1499,
+    "currency": "USD",
+    "in_stock": 7
+  },
+  {
+    "id": "bk-1002",
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "first_published": 1813,
+    "format": "paperback",
+    "price_cents": 1199,
+    "currency": "USD",
+    "in_stock": 12
+  },
+  {
+    "id": "bk-1003",
+    "title": "Frankenstein",
+    "author": "Mary Shelley",
+    "first_published": 1818,
+    "format": "hardcover",
+    "price_cents": 2299,
+    "currency": "USD",
+    "in_stock": 3
+  },
+  {
+    "id": "bk-1004",
+    "title": "The Time Machine",
+    "author": "H. G. Wells",
+    "first_published": 1895,
+    "format": "paperback",
+    "price_cents": 999,
+    "currency": "USD",
+    "in_stock": 0
+  },
+  {
+    "id": "bk-1005",
+    "title": "Dracula",
+    "author": "Bram Stoker",
+    "first_published": 1897,
+    "format": "paperback",
+    "price_cents": 1299,
+    "currency": "USD",
+    "in_stock": 5
+  },
+  {
+    "id": "bk-1006",
+    "title": "Treasure Island",
+    "author": "Robert Louis Stevenson",
+    "first_published": 1883,
+    "format": "hardcover",
+    "price_cents": 1899,
+    "currency": "USD",
+    "in_stock": 4
+  },
+  {
+    "id": "bk-1007",
+    "title": "The Adventures of Sherlock Holmes",
+    "author": "Arthur Conan Doyle",
+    "first_published": 1892,
+    "format": "paperback",
+    "price_cents": 1399,
+    "currency": "USD",
+    "in_stock": 9
+  },
+  {
+    "id": "bk-1008",
+    "title": "Little Women",
+    "author": "Louisa May Alcott",
+    "first_published": 1868,
+    "format": "paperback",
+    "price_cents": 1299,
+    "currency": "USD",
+    "in_stock": 6
+  }
+]
