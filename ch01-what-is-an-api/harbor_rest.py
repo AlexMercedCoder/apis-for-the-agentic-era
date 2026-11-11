@@ -15,6 +15,7 @@ from pathlib import Path
 DATA = Path(__file__).resolve().parent.parent / "harbor-data" / "books.json"
 BOOKS = {book["id"]: book for book in json.loads(DATA.read_text())}
 BOOK_PATH = re.compile(r"^/books/(?P<book_id>[^/]+)$")
+ID_RANGE = f"{min(BOOKS)} to {max(BOOKS)}"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -35,7 +36,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(404, {
                 "error": "book_not_found",
                 "message": f"No book with id {book_id}.",
-                "hint": "Book IDs look like bk-1001.",
+                "hint": f"This catalog has IDs {ID_RANGE}.",
             })
             return
         self.send_json(200, book)

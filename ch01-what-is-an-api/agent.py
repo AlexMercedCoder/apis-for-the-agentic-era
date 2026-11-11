@@ -112,9 +112,17 @@ class LiveModel:
         return response.json()
 
 
+BOOK_ID = re.compile(GET_BOOK_TOOL["input_schema"]["properties"]
+                     ["book_id"]["pattern"])
+
+
 def run_tool(name, tool_input):
     if name != "get_book":
         return {"error": f"unknown tool {name}"}, True
+    book_id = tool_input.get("book_id", "")
+    if not isinstance(book_id, str) or not BOOK_ID.match(book_id):
+        return {"error": "invalid_argument",
+                "message": "book_id must match ^bk-[0-9]{4}$"}, True
     response = httpx.get(
         f"{HARBOR}/books/{tool_input['book_id']}",
         headers={"User-Agent": "harbor-agent/0.1"},
@@ -163,7 +171,13 @@ def main():
             {"role": "user", "content": results},
         ]
         followup = model.create(request)
-        show("model's answer", followup)
+        print("--- model's answer")
+        for block in followup["content"]:
+            if block["type"] == "text":
+                print(block["text"])
+        if followup.get("stop_reason") == "tool_use":
+            print("(the model asked for another tool call; this example "
+                  "stops after one round trip)")
 
 
 if __name__ == "__main__":

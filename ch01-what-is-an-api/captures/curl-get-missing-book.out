@@ -1,6 +1,6 @@
 {
   "error": "book_not_found",
   "message": "No book with id bk-9999.",
-  "hint": "Book IDs look like bk-1001."
+  "hint": "This catalog has IDs bk-1001 to bk-1008."
 }
 404

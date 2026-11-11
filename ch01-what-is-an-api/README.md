@@ -38,7 +38,7 @@ and the callers in another:
 
 ```bash
 curl -v http://127.0.0.1:8000/books/bk-1001
-curl -s http://127.0.0.1:8000/books/bk-9999    # 404 with a hint
+curl -s http://127.0.0.1:8000/books/bk-9999    # 404; hint lists valid IDs
 uv run python client.py bk-1001
 uv run python agent.py
 grep 'bk-1001' captures/server-log.txt             # after ./run.sh
@@ -60,7 +60,9 @@ content block `{"type": "tool_use", "id", "name", "input"}` with
 `"stop_reason": "tool_use"`. Its output is labeled `"model": "local-standin"`
 and its IDs carry `standin`, so it can't be mistaken for model output. The
 request body `agent.py` prints is the real request format, and the tool call
-it executes is a real HTTP request to the Harbor server. The stand-in stops
+it executes is a real HTTP request to the Harbor server, made only after
+`book_id` passes the schema's `pattern` (otherwise the host returns an
+`invalid_argument` tool error without calling Harbor). The stand-in stops
 after printing the `tool_result` block; it never prints an answer, because
 any answer it printed would be invented.
 
@@ -74,7 +76,7 @@ uv run python agent.py --live
 `--live` posts to `https://api.anthropic.com/v1/messages` with
 `anthropic-version: 2026-10-21` and model `claude-opus-5-5` (override with
 `HARBOR_MODEL`), as documented on November 10, 2026. It sends the
-`tool_result` back in a second request and prints the model's answer under
+`tool_result` back in a second request and prints the text of the model's reply under
 `--- model's answer`. It costs tokens. The `--live` path was not run when the
 captures were made (no key was available). The
 format follows https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview.
