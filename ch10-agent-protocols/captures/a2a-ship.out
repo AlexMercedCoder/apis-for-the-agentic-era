@@ -1,9 +1,9 @@
 card: Harbor Books fulfillment agent, skill arrange-delivery, streaming=True, push=True
-request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage", "params": {"message": {"messageId": "ae456dfe-b65b-43d6-a1e6-c3a82376b0b1", "role": "ROLE_USER", "parts": [{"text": "Please ship this order for Rosa."}, {"data": {"order_id": "ord-5003", "gift_wrap": true}}]}, "configuration": {"taskPushNotificationConfig": {"url": "http://127.0.0.1:8012/a2a/push", "token": "<32-character token, this task only>"}}}}
+request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage", "params": {"message": {"messageId": "dcb31a04-b7e6-44e2-9696-44b8d4be4b35", "role": "ROLE_USER", "parts": [{"text": "Please ship this order for Rosa."}, {"data": {"order_id": "ord-5003", "gift_wrap": true}}]}, "configuration": {"taskPushNotificationConfig": {"url": "http://127.0.0.1:8012/a2a/push", "token": "<32-character token, this task only>"}}}}
 response: 200 text/event-stream; charset=utf-8
-  task ad405e1c TASK_STATE_SUBMITTED
+  task 4b13cf9b TASK_STATE_SUBMITTED
   status TASK_STATE_WORKING   Picking ord-5003
   status TASK_STATE_WORKING   Packed and gift-wrapped ord-5003
-  artifact shipment {"carrier": "demo-post", "tracking": "DP50030042", "order_id": "ord-5003", "gift_wrap": true}
+  artifact shipment {"tracking": "DP50030042", "order_id": "ord-5003", "carrier": "demo-post", "gift_wrap": true}
   status TASK_STATE_COMPLETED ord-5003 handed to the carrier
 GetTask: TASK_STATE_COMPLETED, 1 artifact

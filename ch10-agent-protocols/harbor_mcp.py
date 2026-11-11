@@ -20,27 +20,32 @@ import hmac
 import json
 import logging
 import os
+import re
 import sys
 import time
 import uuid
 from pathlib import Path
 
 import httpx
+import jsonschema
 import jwt
 import mcp_types as types
+from mcp_types.jsonrpc import INVALID_PARAMS
 import uvicorn
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.routes import create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.lowlevel import Server
+from mcp.shared.exceptions import MCPError
+from urllib.parse import quote
 
 ISSUER = "http://127.0.0.1:8080/realms/harbor"
 RESOURCE = "http://127.0.0.1:8010/mcp"
 REST = "http://127.0.0.1:8003"
 SPEC = json.loads((Path(__file__).parent.parent / "ch03-rest-apis" /
                    "openapi.json").read_text())
-# Seals requestState for confirmations. A placeholder; load a real key from
+# Signs requestState for confirmations. A placeholder; load a real key from
 # a secret store and rotate it.
 STATE_KEY = os.environ.get("HARBOR_STATE_KEY",
                            "not-a-real-key-for-request-state").encode()
@@ -120,6 +125,7 @@ def build_tools():
 
 
 TOOLS, ROUTES = build_tools()
+SCHEMAS = {tool.name: tool.input_schema for tool in TOOLS}
 
 
 # -- tokens ------------------------------------------------------------------
@@ -159,15 +165,18 @@ def caller():
 # a payment that needs proof from the person belongs in URL-mode elicitation
 # to the server's own page, or a step-up sign-in.
 
-def seal(payload):
+def sign_state(payload):
     """Sign the state (HMAC-SHA256). Signed, not encrypted: it's readable."""
     raw = json.dumps(payload, sort_keys=True).encode()
     tag = hmac.new(STATE_KEY, raw, hashlib.sha256).digest()
     return base64.urlsafe_b64encode(raw + tag).decode()
 
 
-def unseal(state):
-    blob = base64.urlsafe_b64decode(state.encode())
+def open_state(state):
+    try:
+        blob = base64.urlsafe_b64decode(state.encode())
+    except ValueError:
+        raise ValueError("requestState is not ours") from None
     raw, tag = blob[:-32], blob[-32:]
     if not hmac.compare_digest(
             tag, hmac.new(STATE_KEY, raw, hashlib.sha256).digest()):
@@ -184,12 +193,12 @@ async def confirm(name, args, subject, summary, params):
     """Ask the person first; return (approved, idempotency key) or a result.
 
     The first call returns InputRequiredResult with a form-mode elicitation
-    and a sealed requestState that binds the person, the exact arguments,
+    and a signed requestState that binds the person, the exact arguments,
     an expiry, and the Idempotency-Key minted now, so every retry of this
     confirmation reuses one key.
     """
     if params.request_state is None:
-        state = seal({"sub": subject, "call": digest(name, args),
+        state = sign_state({"sub": subject, "call": digest(name, args),
                       "exp": int(time.time()) + 300,
                       "key": f'"{uuid.uuid4()}"'})
         ask = types.ElicitRequest(params=types.ElicitRequestFormParams(
@@ -200,10 +209,16 @@ async def confirm(name, args, subject, summary, params):
                 "required": ["confirm"]}))
         return types.InputRequiredResult(
             input_requests={"confirm": ask}, request_state=state)
-    state = unseal(params.request_state)
-    if (state["sub"] != subject or state["call"] != digest(name, args)
+    try:
+        state = open_state(params.request_state)
+    except (ValueError, KeyError):
+        state = None
+    if (state is None or state["sub"] != subject
+            or state["call"] != digest(name, args)
             or state["exp"] < time.time()):
-        raise ValueError("requestState is for another person, call, or time")
+        # Rejected, as MRTR requires: an invalid-params error, not a crash.
+        raise MCPError(INVALID_PARAMS, "requestState is invalid, expired, "
+                       "or for another person or call")
     answer = (params.input_responses or {}).get("confirm")
     approved = (isinstance(answer, types.ElicitResult)
                 and answer.action == "accept"
@@ -244,6 +259,14 @@ async def call_tool(ctx, params):
         raise ValueError(f"unknown tool {name}")
     customer, scopes, subject = caller()
     method, path, where, has_body = ROUTES[name]
+    # The model's arguments are untrusted input: check them against the
+    # schema this server published before any of them reaches a URL.
+    try:
+        jsonschema.validate(args, SCHEMAS[name])
+    except jsonschema.ValidationError as err:
+        log.info("tools/call %s caller=%s refused: %s", name, customer,
+                 err.message[:60])
+        return tool_error(f"Invalid arguments: {err.message}")
     needed = "orders:read" if method == "get" else "orders:write"
     if needed not in scopes:
         log.info("tools/call %s caller=%s refused: needs %s",
@@ -251,7 +274,8 @@ async def call_tool(ctx, params):
         return tool_error(f"This token lacks {needed}; ask the person to "
                           f"grant it.")
     if name in OWNED:
-        order = await rest("GET", f"/orders/{args.get('order_id', '')}")
+        order = await rest(
+            "GET", f"/orders/{quote(str(args.get('order_id', '')), safe='')}")
         if order.status_code != 200 or \
                 order.json().get("customer_id") != customer:
             log.info("tools/call %s caller=%s %s not theirs", name,
@@ -272,8 +296,8 @@ async def call_tool(ctx, params):
             return tool_error("The person declined; nothing was changed.")
         if name == "place_order":
             headers["Idempotency-Key"] = key
-    url = path.format(**{k: args.pop(k) for k in list(args)
-                         if where.get(k) == "path"})
+    url = path.format(**{k: quote(str(args.pop(k)), safe="")
+                         for k in list(args) if where.get(k) == "path"})
     query = {k: args.pop(k) for k in list(args) if where.get(k) == "query"}
     body = None
     if has_body:
@@ -308,7 +332,10 @@ async def read_resource(ctx, params):
     uri = str(params.uri)
     if not uri.startswith("harbor://books/"):
         raise ValueError(f"unknown resource {uri}")
-    resp = await rest("GET", f"/books/{uri.rsplit('/', 1)[1]}")
+    book_id = uri.rsplit("/", 1)[1]
+    if not re.fullmatch(r"bk-[0-9]{4}", book_id):
+        raise ValueError(f"no book at {uri}")
+    resp = await rest("GET", f"/books/{book_id}")
     if resp.status_code != 200:
         raise ValueError(f"no book at {uri}")
     return types.ReadResourceResult(contents=[types.TextResourceContents(

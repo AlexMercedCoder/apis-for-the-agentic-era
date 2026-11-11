@@ -117,6 +117,8 @@
 === MCP server log
 tools/call get_order_status caller=cus-001 -> GET /orders/ord-5003 200
 tools/call get_order_status caller=cus-001 ord-5002 not theirs
+tools/call get_book caller=cus-001 refused: '../orders/ord-5002' does
+    not match '^bk-[0-9]{4}$'
 tools/call place_order caller=cus-001 403 needs orders:write
 tools/call place_order caller=cus-001 input_required
 tools/call place_order caller=cus-001 -> POST /orders 201
@@ -148,6 +150,8 @@ token refused: DecodeError
 7. get_order_status ord-5003: paid
 8. get_order_status ord-5002 (Sam's): is_error=True No order with id
     ord-5002.
+8b. get_book ../orders/ord-5002: is_error=True Invalid arguments:
+    '../orders/ord-5002' does not match '^bk-[0-9]{4}$'
 9. resources/read harbor://books/bk-1001: Moby-Dick
 10. prompts/get where_is_my_order: The customer asks where order
     ord-5003 is. Call get_order_st...
@@ -155,9 +159,10 @@ token refused: DecodeError
    www-authenticate: Bearer error="insufficient_scope",
        scope="orders:read orders:write", resource_metadata="http://127.0
        .0.1:8010/.well-known/oauth-protected-resource/mcp"
-   same call labeled get_book in Mcp-Name: 400
+   same call labeled get_book in Mcp-Name: 400 -32020 mcp-name header
+       does not match the request body's 'name' parameter
 12. rosa approved 'orders:read orders:write': token <JWT 947 chars>,
-    scope 'orders:read orders:write'
+    scope 'orders:write orders:read'
 13. place_order, which asks Rosa first:
    form shown to Rosa: Order 1 x Treasure Island for 1899 cents?
    ord-5005 for cus-001: placed, 1899 cents
@@ -199,7 +204,7 @@ token refused: DecodeError
   "method": "SendStreamingMessage",
   "params": {
     "message": {
-      "messageId": "ae456dfe-...",
+      "messageId": "dcb31a04-...",
       "role": "ROLE_USER",
       "parts": [
         {
@@ -224,11 +229,11 @@ token refused: DecodeError
 
 === A2A hand-off output
 response: 200 text/event-stream; charset=utf-8
-  task ad405e1c TASK_STATE_SUBMITTED
+  task 4b13cf9b TASK_STATE_SUBMITTED
   status TASK_STATE_WORKING   Picking ord-5003
   status TASK_STATE_WORKING   Packed and gift-wrapped ord-5003
-  artifact shipment {"carrier": "demo-post", "tracking": "DP50030042",
-      "order_id": "ord-5003", "gift_wrap": true}
+  artifact shipment {"tracking": "DP50030042", "order_id": "ord-5003",
+      "carrier": "demo-post", "gift_wrap": true}
   status TASK_STATE_COMPLETED ord-5003 handed to the carrier
 GetTask: TASK_STATE_COMPLETED, 1 artifact
 
@@ -236,16 +241,16 @@ GetTask: TASK_STATE_COMPLETED, 1 artifact
 data: {
   "result": {
     "statusUpdate": {
-      "taskId": "ad405e1c-...",
-      "contextId": "ba9c8332-...",
+      "taskId": "4b13cf9b-...",
+      "contextId": "24b53bbe-...",
       "status": {
         "state": "TASK_STATE_WORKING",
         "message": {
-          "messageId": "c1a2ff7b-...",
+          "messageId": "8dbbfe53-...",
           "role": "ROLE_AGENT",
           "parts": [{"text": "Picking ord-5003"}]
         },
-        "timestamp": "2026-11-11T11:41:37.472571Z"
+        "timestamp": "2026-11-11T12:11:21.492343Z"
       }
     }
   },
@@ -258,14 +263,14 @@ card: Harbor Books fulfillment agent, skill arrange-delivery,
     streaming=True, push=True
 request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage",
     "params": {"message": {"messageId":
-    "2adbe715-073c-45fd-9594-03e3cfc9eebd", "role": "ROLE_USER",
+    "47ac7829-229f-46d1-bc49-219fae2c5aa8", "role": "ROLE_USER",
     "parts": [{"text": "Please ship this order for Rosa."}, {"data":
     {"order_id": "ord-5002", "gift_wrap": true}}]}, "configuration":
     {"taskPushNotificationConfig": {"url":
     "http://127.0.0.1:8012/a2a/push", "token": "<32-character token,
     this task only>"}}}}
 response: 200 text/event-stream; charset=utf-8
-  task df76bd93 TASK_STATE_SUBMITTED
+  task 9b51a809 TASK_STATE_SUBMITTED
   status TASK_STATE_REJECTED  ord-5002 isn't a paid order waiting to
       ship.
 GetTask: TASK_STATE_REJECTED, 0 artifact
@@ -275,14 +280,14 @@ card: Harbor Books fulfillment agent, skill arrange-delivery,
     streaming=True, push=True
 request: {"jsonrpc": "2.0", "id": 1, "method": "SendStreamingMessage",
     "params": {"message": {"messageId":
-    "fb03dac5-2280-48f2-8905-3e917b08ecfb", "role": "ROLE_USER",
+    "de15f1a1-9f08-45cf-993a-3d91c7048316", "role": "ROLE_USER",
     "parts": [{"text": "Please ship this order for Rosa."}, {"data":
     {"order_id": "ord-5003", "gift_wrap": true}}]}, "configuration":
     {"taskPushNotificationConfig": {"url":
     "http://127.0.0.1:8012/a2a/push", "token": "<32-character token,
     this task only>"}}}}
 response: 200 text/event-stream; charset=utf-8
-  task a7016fc2 TASK_STATE_SUBMITTED
+  task 85f6c2b6 TASK_STATE_SUBMITTED
   status TASK_STATE_REJECTED  ord-5003 isn't a paid order waiting to
       ship.
 GetTask: TASK_STATE_REJECTED, 0 artifact
@@ -292,15 +297,21 @@ unknown token: 401
 another task's token: 403
 
 === push receiver log
-204 task ad405e1c TASK_STATE_SUBMITTED
-204 task ad405e1c TASK_STATE_WORKING
-204 task ad405e1c TASK_STATE_WORKING
-204 task ad405e1c artifact shipment
-204 task ad405e1c TASK_STATE_COMPLETED
-204 task df76bd93 TASK_STATE_SUBMITTED
-204 task df76bd93 TASK_STATE_REJECTED
-204 task a7016fc2 TASK_STATE_SUBMITTED
-204 task a7016fc2 TASK_STATE_REJECTED
+202 task 4b13cf9b held until the task is known
+202 task 4b13cf9b held until the task is known
+204 task 4b13cf9b TASK_STATE_SUBMITTED
+204 task 4b13cf9b TASK_STATE_WORKING
+204 task 4b13cf9b TASK_STATE_WORKING
+204 task 4b13cf9b artifact shipment
+204 task 4b13cf9b TASK_STATE_COMPLETED
+202 task 9b51a809 held until the task is known
+202 task 9b51a809 held until the task is known
+204 task 9b51a809 TASK_STATE_SUBMITTED
+204 task 9b51a809 TASK_STATE_REJECTED
+202 task 85f6c2b6 held until the task is known
+202 task 85f6c2b6 held until the task is known
+204 task 85f6c2b6 TASK_STATE_SUBMITTED
+204 task 85f6c2b6 TASK_STATE_REJECTED
 401 push with a token this receiver never minted
 403 push for task forged-t with another task's token
 

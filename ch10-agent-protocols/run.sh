@@ -46,7 +46,7 @@ uv run -q python setup_realm.py > "$OUT/setup.out"
 (cd ../ch03-rest-apis && exec uv run -q python harbor_api.py) \
   > "$OUT/rest-api.log" 2>&1 & PIDS+=($!)
 wait_port 8003
-: > "$OUT/push-tokens.txt"
+: > "$OUT/push-tokens.txt"; : > "$OUT/push-tasks.txt"
 uv run -q python harbor_mcp.py 2> "$OUT/mcp-server.log" & PIDS+=($!)
 uv run -q python fulfillment_agent.py 2> "$OUT/fulfillment.log" & PIDS+=($!)
 uv run -q python push_receiver.py 2> "$OUT/push-receiver.log" & PIDS+=($!)

@@ -1,11 +1,17 @@
-204 task ad405e1c TASK_STATE_SUBMITTED
-204 task ad405e1c TASK_STATE_WORKING
-204 task ad405e1c TASK_STATE_WORKING
-204 task ad405e1c artifact shipment
-204 task ad405e1c TASK_STATE_COMPLETED
-204 task df76bd93 TASK_STATE_SUBMITTED
-204 task df76bd93 TASK_STATE_REJECTED
-204 task a7016fc2 TASK_STATE_SUBMITTED
-204 task a7016fc2 TASK_STATE_REJECTED
+202 task 4b13cf9b held until the task is known
+202 task 4b13cf9b held until the task is known
+204 task 4b13cf9b TASK_STATE_SUBMITTED
+204 task 4b13cf9b TASK_STATE_WORKING
+204 task 4b13cf9b TASK_STATE_WORKING
+204 task 4b13cf9b artifact shipment
+204 task 4b13cf9b TASK_STATE_COMPLETED
+202 task 9b51a809 held until the task is known
+202 task 9b51a809 held until the task is known
+204 task 9b51a809 TASK_STATE_SUBMITTED
+204 task 9b51a809 TASK_STATE_REJECTED
+202 task 85f6c2b6 held until the task is known
+202 task 85f6c2b6 held until the task is known
+204 task 85f6c2b6 TASK_STATE_SUBMITTED
+204 task 85f6c2b6 TASK_STATE_REJECTED
 401 push with a token this receiver never minted
 403 push for task forged-t with another task's token

@@ -83,8 +83,11 @@ def main(order_id):
                     print("error: " + json.dumps(event["error"]))
                     continue
                 result = event["result"]
-                task_id = task_id or result.get("task", {}).get("id") or \
-                    result.get("statusUpdate", {}).get("taskId")
+                if task_id is None:
+                    task_id = result.get("task", {}).get("id") or \
+                        result.get("statusUpdate", {}).get("taskId")
+                    with (OUT / "push-tasks.txt").open("a") as f:
+                        f.write(f"{push_token} {task_id}\n")   # expect it
                 print("  " + describe(result))
     raw.close()
     if task_id is None:

@@ -1,5 +1,6 @@
 tools/call get_order_status caller=cus-001 -> GET /orders/ord-5003 200
 tools/call get_order_status caller=cus-001 ord-5002 not theirs
+tools/call get_book caller=cus-001 refused: '../orders/ord-5002' does not match '^bk-[0-9]{4}$'
 tools/call place_order caller=cus-001 403 needs orders:write
 tools/call place_order caller=cus-001 input_required
 tools/call place_order caller=cus-001 -> POST /orders 201

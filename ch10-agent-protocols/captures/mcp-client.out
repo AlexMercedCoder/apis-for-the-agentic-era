@@ -15,12 +15,13 @@
    cancel_order      destructive
 7. get_order_status ord-5003: paid
 8. get_order_status ord-5002 (Sam's): is_error=True No order with id ord-5002.
+8b. get_book ../orders/ord-5002: is_error=True Invalid arguments: '../orders/ord-5002' does not match '^bk-[0-9]{4}$'
 9. resources/read harbor://books/bk-1001: Moby-Dick
 10. prompts/get where_is_my_order: The customer asks where order ord-5003 is. Call get_order_st...
 11. place_order with that token: 403
    www-authenticate: Bearer error="insufficient_scope", scope="orders:read orders:write", resource_metadata="http://127.0.0.1:8010/.well-known/oauth-protected-resource/mcp"
-   same call labeled get_book in Mcp-Name: 400
-12. rosa approved 'orders:read orders:write': token <JWT 947 chars>, scope 'orders:read orders:write'
+   same call labeled get_book in Mcp-Name: 400 -32020 mcp-name header does not match the request body's 'name' parameter
+12. rosa approved 'orders:read orders:write': token <JWT 947 chars>, scope 'orders:write orders:read'
 13. place_order, which asks Rosa first:
    form shown to Rosa: Order 1 x Treasure Island for 1899 cents?
    ord-5005 for cus-001: placed, 1899 cents

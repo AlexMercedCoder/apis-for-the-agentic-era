@@ -7,9 +7,11 @@ deployment the receiver is part of the shopping agent). The fulfillment
 agent POSTs each task update with that token. The receiver:
 
 - refuses a token it didn't mint (401), compared in constant time;
-- binds each token to the first task ID it arrives with, and refuses that
-  token for any other task (403), so one task's token can't speak for
-  another;
+- accepts a token only for the task the shopping agent created with it,
+  which the shopping agent records (in $OUT/push-tasks.txt) as soon as the
+  stream names the task; an update that arrives before that is held (202)
+  and checked once the task is known; a push for any other task gets 403,
+  so one task's token can't speak for another (A2A 1.0 section 4.3.3);
 - processes each update once, keyed by task, state, and status time,
   because deliveries can repeat (A2A 1.0 section 4.3).
 
@@ -19,6 +21,8 @@ A production receiver also uses HTTPS and asks the agent for
     uv run python push_receiver.py        # 127.0.0.1:8012
 """
 
+import asyncio
+import contextlib
 import hmac
 import logging
 import os
@@ -30,8 +34,10 @@ from starlette.applications import Starlette
 from starlette.responses import Response
 from starlette.routing import Route
 
-TOKENS = Path(os.environ.get("OUT", "captures")) / "push-tokens.txt"
-bound = {}                               # token -> task ID
+OUT = Path(os.environ.get("OUT", "captures"))
+TOKENS = OUT / "push-tokens.txt"
+TASKS = OUT / "push-tasks.txt"
+held = {}                                # token -> updates
 seen = set()
 log = logging.getLogger("receiver")
 logging.basicConfig(stream=sys.stderr, level=logging.INFO,
@@ -47,37 +53,89 @@ def minted(given):
     return match
 
 
+def expected_task(token):
+    """The task the shopping agent created with this token, if it knows yet."""
+    if TASKS.exists():
+        for line in TASKS.read_text().splitlines():
+            minted_for, _, task_id = line.partition(" ")
+            if hmac.compare_digest(minted_for.encode(), token.encode()):
+                return task_id
+    return None
+
+
+def update_of(body):
+    if "task" in body:
+        return {"taskId": body["task"]["id"], "status": body["task"]["status"]}
+    return body.get("statusUpdate") or body.get("artifactUpdate", {})
+
+
+def process(update):
+    task_id = update.get("taskId", "")
+    if "artifact" in update:
+        log.info("204 task %s artifact %s", task_id[:8],
+                 update["artifact"].get("name"))
+        return
+    status = update["status"]
+    key = (task_id, status["state"], status.get("timestamp"))
+    if key in seen:
+        log.info("204 task %s %s duplicate, ignored", key[0][:8], key[1])
+        return
+    seen.add(key)
+    log.info("204 task %s %s", key[0][:8], key[1])
+
+
+def release(token, expected):
+    """Process held updates for the expected task; drop any others."""
+    for earlier in held.pop(token, []):
+        if earlier.get("taskId") == expected:
+            process(earlier)
+        else:
+            log.info("dropped a held update for task %s",
+                     earlier.get("taskId", "")[:8])
+
+
+async def sweep():
+    """Release held updates as soon as the shopping agent records the task."""
+    while True:
+        for token in list(held):
+            expected = expected_task(token)
+            if expected is not None:
+                release(token, expected)
+        await asyncio.sleep(0.2)
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(sweep())
+    yield
+    task.cancel()
+
+
 async def push(request):
     token = minted(request.headers.get("x-a2a-notification-token", ""))
     if token is None:
         log.info("401 push with a token this receiver never minted")
         return Response(status_code=401)
-    body = await request.json()
-    if "task" in body:
-        update = {"taskId": body["task"]["id"],
-                  "status": body["task"]["status"]}
-    else:
-        update = body.get("statusUpdate") or body.get("artifactUpdate", {})
-    task_id = update.get("taskId", "")
-    if bound.setdefault(token, task_id) != task_id:
+    update = update_of(await request.json())
+    expected = expected_task(token)
+    if expected is None:
+        # The agent can post before the shopping agent has read the task ID
+        # from its stream. Hold the update until the task is known.
+        held.setdefault(token, []).append(update)
+        log.info("202 task %s held until the task is known",
+                 update.get("taskId", "")[:8])
+        return Response(status_code=202)
+    release(token, expected)
+    if update.get("taskId") != expected:
         log.info("403 push for task %s with another task's token",
-                 task_id[:8])
+                 update.get("taskId", "")[:8])
         return Response(status_code=403)
-    if "artifact" in update:
-        log.info("204 task %s artifact %s", task_id[:8],
-                 update["artifact"].get("name"))
-        return Response(status_code=204)
-    status = update["status"]
-    key = (task_id, status["state"], status.get("timestamp"))
-    if key in seen:
-        log.info("204 task %s %s duplicate, ignored", key[0][:8], key[1])
-        return Response(status_code=204)
-    seen.add(key)
-    log.info("204 task %s %s", key[0][:8], key[1])
+    process(update)
     return Response(status_code=204)
 
 
-app = Starlette(routes=[Route("/a2a/push", push, methods=["POST"])])
+app = Starlette(routes=[Route("/a2a/push", push, methods=["POST"])],
+                lifespan=lifespan)
 
 if __name__ == "__main__":
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

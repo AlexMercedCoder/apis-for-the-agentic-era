@@ -47,6 +47,9 @@ def discover_and_sign_in():
     issuer = prm["authorization_servers"][0]
     meta = httpx.get(f"{issuer}/.well-known/oauth-authorization-server"
                      ).json()
+    if meta["issuer"] != issuer:                     # RFC 8414 section 3.3
+        raise SystemExit(f"metadata names issuer {meta['issuer']}, "
+                         f"not {issuer}; refusing to use it")
     print(f"3. authorization server {meta['issuer']}, PKCE "
           f"{meta['code_challenge_methods_supported']}")
     scope = " ".join(prm["scopes_supported"])
@@ -65,7 +68,8 @@ def step_up(token, meta, prm):
     """A write with a read-only token gets 403; ask Rosa for more, retry."""
     call = {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
             "params": {"name": "place_order", "arguments": {}, "_meta": {
-                "io.modelcontextprotocol/protocolVersion": "2026-07-28"}}}
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {}}}}
     resp = httpx.post(MCP, json=call, headers={
         "Authorization": f"Bearer {token}",
         "Accept": "application/json, text/event-stream",
@@ -79,7 +83,8 @@ def step_up(token, meta, prm):
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call",
         "Mcp-Name": "get_book"})
-    print(f"   same call labeled get_book in Mcp-Name: {sneak.status_code}")
+    print(f"   same call labeled get_book in Mcp-Name: {sneak.status_code} "
+          f"{sneak.json()['error']['code']} {sneak.json()['error']['message']}")
     wanted = re.search(r'scope="([^"]+)"', challenge)[1]
     again = sign_in(meta, prm["resource"], wanted, "rosa")
     token = again.json()["access_token"]
@@ -146,6 +151,10 @@ async def session(token, meta, prm):
                                         {"order_id": "ord-5002"})
         print(f"8. get_order_status ord-5002 (Sam's): is_error="
               f"{theirs.is_error} {theirs.content[0].text}")
+        sneaky = await client.call_tool("get_book",
+                                        {"book_id": "../orders/ord-5002"})
+        print(f"8b. get_book ../orders/ord-5002: is_error="
+              f"{sneaky.is_error} {sneaky.content[0].text}")
         book = await client.read_resource("harbor://books/bk-1001")
         print(f"9. resources/read harbor://books/bk-1001: "
               f"{json.loads(book.contents[0].text)['title']}")

@@ -553,8 +553,10 @@ check "ch10: seven tools from Chapter 3's contract, annotated by method" \
            grep -qE 'place_order +writes' '$CH10/mcp-client.out' &&
            grep -qE 'cancel_order +destructive' '$CH10/mcp-client.out' &&
            grep -qE 'get_book +read-only' '$CH10/mcp-client.out'"
-check "ch10: Rosa reads her order; Sam's looks missing" \
+check "ch10: Rosa reads her order; Sam's looks missing; arguments validated" \
   bash -c "grep -q 'ord-5003: paid' '$CH10/mcp-client.out' &&
+           grep -q 'get_book ../orders/ord-5002: is_error=True Invalid arguments' '$CH10/mcp-client.out' &&
+           grep -q 'get_book caller=cus-001 refused' '$CH10/mcp-server.log' &&
            grep -q 'is_error=True No order with id ord-5002.' '$CH10/mcp-client.out' &&
            grep -q 'ord-5002 not theirs' '$CH10/mcp-server.log'"
 check "ch10: 2026-07-28 on every request; server/discover first" \
@@ -565,20 +567,30 @@ check "ch10: 2026-07-28 on every request; server/discover first" \
 check "ch10: a read-only token's write gets 403; step-up, then it asks first" \
   bash -c "grep -q 'place_order with that token: 403' '$CH10/mcp-client.out' &&
            grep -q 'scope=\"orders:read orders:write\"' '$CH10/mcp-client.out' &&
-           grep -q 'labeled get_book in Mcp-Name: 400' '$CH10/mcp-client.out' &&
+           grep -q 'labeled get_book in Mcp-Name: 400 -32020' '$CH10/mcp-client.out' &&
            grep -q 'place_order caller=cus-001 input_required' '$CH10/mcp-server.log' &&
            grep -q 'POST /orders 201' '$CH10/mcp-server.log' &&
            grep -q 'ord-5005 for cus-001: placed, 1899 cents' '$CH10/mcp-client.out'"
-check "ch10: the confirmation's state can't be tampered with or reused" \
+check "ch10: confirmation state refused if tampered, foreign, other call, expired" \
   bash -c "cd ch10-agent-protocols && uv run -q python -c \"
-import harbor_mcp as m
-s = m.seal({'sub': 'a', 'call': 'x', 'exp': 9999999999, 'key': 'k'})
-assert m.unseal(s)['key'] == 'k'
-bad = s[:-4] + ('AAAA' if not s.endswith('AAAA') else 'BBBB')
-try:
-    m.unseal(bad); raise SystemExit('tampered state accepted')
-except ValueError:
-    pass
+import asyncio, time
+import harbor_mcp as m, mcp_types as t
+from mcp.shared.exceptions import MCPError
+args = {'lines': [{'book_id': 'bk-1006', 'quantity': 1}]}
+def st(sub='a', call=None, exp=None):
+    return m.sign_state({'sub': sub, 'call': call or m.digest('place_order', args),
+                         'exp': exp or int(time.time()) + 300, 'key': 'k'})
+def run(state):
+    p = t.CallToolRequestParams(name='place_order', arguments=args, request_state=state)
+    return asyncio.run(m.confirm('place_order', args, 'a', 'x', p))
+assert run(st())[1] == 'k'
+good = st()
+for bad in [good[:-4] + ('AAAA' if not good.endswith('AAAA') else 'BBBB'),
+            st(sub='b'), st(call='x'), st(exp=1), '!!!']:
+    try:
+        run(bad); raise SystemExit('bad state accepted')
+    except MCPError:
+        pass
 \""
 check "ch10: A2A task streams to completed with a shipment artifact" \
   bash -c "grep -q 'response: 200 text/event-stream' '$CH10/a2a-ship.out' &&
@@ -593,7 +605,9 @@ check "ch10: pushes reach the receiver; foreign and cross-task tokens refused" \
            grep -q 'unknown token: 401' '$CH10/push-forged.out' &&
            grep -q 'task.s token: 403' '$CH10/push-forged.out'"
 check "ch10: printed listings fit 72 columns; no access token captured" \
-  bash -c "[ -s '$CH10/listings.txt' ] && ! grep -rq 'eyJhbGci' '$CH10'"
+  bash -c "[ -s '$CH10/listings.txt' ] &&
+           [ -z \"\$(awk 'length > 72' '$CH10/listings.txt')\" ] &&
+           ! grep -rq 'eyJhbGci' '$CH10'"
 
 echo
 echo "$PASS passed, $FAIL failed"
