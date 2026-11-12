@@ -46,7 +46,7 @@ import webhooks_ch09 as webhooks
 
 GW = issuer.GATEWAY
 CARD_URL = GW + "/a2a/fulfillment/.well-known/agent-card.json"
-SECRET = "not-a-real-secret"                       # placeholder
+SECRET = "not-a-real-secret-assistant"             # placeholder
 VERSION = "2026-07-28"
 WRITES = {"refund_damaged_copy"}
 OUT = common.OUT

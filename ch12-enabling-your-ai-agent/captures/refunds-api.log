@@ -1,15 +1,57 @@
-201 rf-d6d41c91 ord-5001 bk-1001 1499 cents, provider re_4caa072c9cbbc244
-webhook charge.refunded re_4caa072c9cbbc244 -> rf-d6d41c91 succeeded
-refund.succeeded rf-d6d41c91 -> host 204
-replayed key=a136a497 rosa->harbor-assistant->harbor-support-mcp
-201 rf-e6a2c2dc ord-5001 bk-1001 1499 cents, provider re_62182b4eb46ba056
-webhook charge.refunded re_62182b4eb46ba056 -> rf-e6a2c2dc succeeded
-refund.succeeded rf-e6a2c2dc -> host 204
+/home/alexmerced/development/content-and-media/books/book-writer-3/apis-for-the-agentic-era/examples/ch12-enabling-your-ai-agent/refunds_api.py:420: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+201 rf-36a87381 ord-5001 bk-1001 1499 cents, provider re_a4c7af595dd0df90
+webhook charge.refunded re_a4c7af595dd0df90 -> rf-36a87381 succeeded
+refund.succeeded rf-36a87381 -> host 204
+replayed key=cc43fcae rosa->harbor-assistant->harbor-support-mcp
+/home/alexmerced/development/content-and-media/books/book-writer-3/apis-for-the-agentic-era/examples/ch12-enabling-your-ai-agent/refunds_api.py:420: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+201 rf-10990a93 ord-5001 bk-1001 1499 cents, provider re_64f51f53f7398516
+webhook charge.refunded re_64f51f53f7398516 -> rf-10990a93 succeeded
+refund.succeeded rf-10990a93 -> host 204
+/home/alexmerced/development/content-and-media/books/book-writer-3/apis-for-the-agentic-era/examples/ch12-enabling-your-ai-agent/refunds_api.py:420: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
 422 damage-case-required ord-5001 rosa->harbor-assistant->harbor-support-mcp
-201 rf-26c9663c ord-5001 bk-1001 1499 cents, provider re_5435934b1e0bc86d
-webhook charge.refunded re_5435934b1e0bc86d -> rf-26c9663c succeeded
-refund.succeeded rf-26c9663c -> host 204
-201 rf-85f8788e ord-5001 bk-1001 1499 cents, provider re_bccb010868c2d5f6
-webhook charge.refunded re_bccb010868c2d5f6 -> rf-85f8788e succeeded
-refund.succeeded rf-85f8788e -> host 204
-replayed key=0d928ec2 rosa->harbor-assistant->harbor-support-mcp
+201 rf-4ca96d1f ord-5001 bk-1001 1499 cents, provider re_c6e9fa5f3b2108ec
+webhook charge.refunded re_c6e9fa5f3b2108ec -> rf-4ca96d1f succeeded
+refund.succeeded rf-4ca96d1f -> host 204
+/home/alexmerced/development/content-and-media/books/book-writer-3/apis-for-the-agentic-era/examples/ch12-enabling-your-ai-agent/refunds_api.py:420: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+201 rf-937d3670 ord-5001 bk-1001 1499 cents, provider re_b676aeef997ce85b
+webhook charge.refunded re_b676aeef997ce85b -> rf-937d3670 succeeded
+refund.succeeded rf-937d3670 -> host 204
+replayed key=8323c557 rosa->harbor-assistant->harbor-support-mcp
+/home/alexmerced/development/content-and-media/books/book-writer-3/apis-for-the-agentic-era/examples/ch12-enabling-your-ai-agent/refunds_api.py:420: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/home/alexmerced/development/content-and-media/books/book-writer-3/apis-for-the-agentic-era/examples/ch12-enabling-your-ai-agent/refunds_api.py:420: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")

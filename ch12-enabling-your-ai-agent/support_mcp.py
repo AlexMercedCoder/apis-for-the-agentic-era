@@ -50,7 +50,7 @@ TRUSTED = json.loads((common.HERE.parent / "ch05-graphql-apis" /
 ORDER_SCREEN = next(k for k, v in TRUSTED.items()      # Chapter 5's
                     if "query OrderScreen(" in v)       # trusted document
 PRM_URL = GATEWAY + "/.well-known/oauth-protected-resource/mcp"
-SECRET = "not-a-real-secret"              # placeholder client secret
+SECRET = "not-a-real-secret-support-mcp"  # placeholder client secret
 
 log = logging.getLogger("support-mcp")
 logging.basicConfig(stream=sys.stderr, level=logging.INFO,
@@ -188,18 +188,18 @@ async def refund_damaged_copy(args, claims, raw_token):
         async with httpx.AsyncClient(timeout=timeout) as http:
             return await http.post(url, json=body, headers=headers)
 
-    if not BREAKER.allow():
-        return tool_error("Harbor's refunds API is failing; try again in "
-                          "a minute. Nothing was refunded by this call.")
     try:
-        resp = await reliable.call(send, deadline=8.0, per_try=1.0,
-                                   log=lambda m: log.info("refund %s", m))
-    except reliable.GaveUp as err:
-        BREAKER.record(False)
+        resp = await reliable.guarded(
+            BREAKER, send, deadline=8.0, per_try=1.0,
+            log=lambda m: log.info("refund %s", m))
+    except reliable.Open:
+        return tool_error("Harbor's refunds API is failing; try again in "
+                          "a minute.")
+    except (reliable.GaveUp, httpx.HTTPError) as err:
         log.info("refund gave up: %s", err)
-        return tool_error("Harbor's refunds API didn't answer in time. "
-                          "Retrying with the same approval is safe.")
-    BREAKER.record(resp.status_code < 500)
+        return tool_error("Harbor's refunds API didn't answer, so the "
+                          "refund isn't confirmed. Retrying with the same "
+                          "approval is safe and can't refund twice.")
     replay = resp.headers.get("idempotent-replayed") == "true"
     log.info("refund %s %s -> %s%s", args["order_id"], args["book_id"],
              resp.status_code, " replayed" if replay else "")

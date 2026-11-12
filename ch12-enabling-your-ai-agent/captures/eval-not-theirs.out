@@ -1,4 +1,4 @@
-session s-7710069f: rosa via harbor-assistant, 3 tools
+session s-0eb57599: rosa via harbor-assistant, 3 tools
 1. rosa: "Where's my order ord-5002? The Frankenstein copy was damaged."
 2. order_overview {"order_id": "ord-5002"}
    error: No order with id ord-5002.

@@ -27,6 +27,7 @@ it outside the demo.
 
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -50,8 +51,11 @@ CIBA = "urn:openid:params:grant-type:ciba"
 EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
 
 # Placeholder client secrets, labeled as such.
-SECRETS = {"harbor-assistant": "not-a-real-secret",
-           "harbor-support-mcp": "not-a-real-secret"}
+SECRETS = {"harbor-assistant": "not-a-real-secret-assistant",
+           "harbor-support-mcp": "not-a-real-secret-support-mcp"}
+CURRENCIES = {"USD", "EUR", "GBP"}     # ISO 4217 codes Harbor sells in
+REFUND_FIELDS = {"type", "actions", "order_id", "book_id", "max_amount",
+                 "currency", "request_id"}
 PEOPLE = {"rosa": "cus-001", "sam": "cus-002", "mei": "cus-003"}
 # What each client may obtain by exchange, per audience: the most scope.
 EXCHANGES = {"harbor-assistant": {MCP_AUD: {"orders:read"},
@@ -141,6 +145,17 @@ def exchange(client, form):
                  "scope": claims["scope"], "expires_in": 300}
 
 
+def valid_detail(d):
+    """Only fields the issuer can render and check, in known shapes."""
+    return (isinstance(d, dict) and set(d) == REFUND_FIELDS
+            and d["type"] == "harbor_refund" and d["actions"] == ["refund"]
+            and isinstance(d["max_amount"], int) and d["max_amount"] > 0
+            and d["currency"] in CURRENCIES
+            and re.fullmatch(r"ord-[0-9]{4}", str(d["order_id"]))
+            and d["book_id"] in BOOKS
+            and re.fullmatch(r"[0-9a-f-]{36}", str(d["request_id"])))
+
+
 def backchannel(client, form):
     """CIBA Core 1.0: ask the person, on her own device, to approve."""
     person = form.get("login_hint", "")
@@ -149,8 +164,7 @@ def backchannel(client, form):
             or "orders:refund" not in scope:
         return 400, {"error": "invalid_request"}
     details = json.loads(form.get("authorization_details", "[]"))
-    if not details or any(d.get("type") != "harbor_refund"
-                          for d in details):
+    if not details or not all(valid_detail(d) for d in details):
         return 400, {"error": "invalid_authorization_details"}
     try:
         display = "; ".join(

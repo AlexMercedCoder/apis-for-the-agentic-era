@@ -35,14 +35,14 @@
       "result": {
         "isError": false,
         "structured": {
+          "order_id": "ord-5001",
           "refund_eligible": true,
+          "case_id": "dmg-5a4ca8ae",
           "return_required": false,
-          "book_id": "bk-1001",
-          "case_id": "dmg-2f251ae2",
-          "order_id": "ord-5001"
+          "book_id": "bk-1001"
         },
-        "text": "Damage recorded as dmg-2f251ae2; no return needed.",
-        "task": "e3af964b-840a-4b5c-947c-c97c08f3d901"
+        "text": "Damage recorded as dmg-5a4ca8ae; no return needed.",
+        "task": "8ebb0360-a18a-4653-9d2e-fcf2e231dd71"
       }
     },
     {
@@ -50,21 +50,22 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "damage_case": "dmg-2f251ae2"
+        "damage_case": "dmg-5a4ca8ae"
       },
       "result": {
         "isError": false,
         "structured": {
-          "id": "rf-85f8788e",
+          "id": "rf-937d3670",
           "order_id": "ord-5001",
           "book_id": "bk-1001",
           "amount_cents": 1499,
           "currency": "USD",
           "status": "pending",
-          "damage_case": "dmg-2f251ae2",
-          "provider_refund": "re_bccb010868c2d5f6"
+          "damage_case": "dmg-5a4ca8ae",
+          "payment_intent": "pi_670f51737a31856d",
+          "provider_refund": "re_b676aeef997ce85b"
         },
-        "text": "{\"id\": \"rf-85f8788e\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-2f251ae2\", \"provider_refund\": \"re_bccb010868c2d5f6\"}"
+        "text": "{\"id\": \"rf-937d3670\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-5a4ca8ae\", \"payment_intent\": \"pi_670f51737a31856d\", \"provider_refund\": \"re_b676aeef997ce85b\"}"
       }
     },
     {
@@ -72,21 +73,22 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "damage_case": "dmg-2f251ae2"
+        "damage_case": "dmg-5a4ca8ae"
       },
       "result": {
         "isError": false,
         "structured": {
-          "id": "rf-85f8788e",
+          "id": "rf-937d3670",
           "order_id": "ord-5001",
           "book_id": "bk-1001",
           "amount_cents": 1499,
           "currency": "USD",
           "status": "pending",
-          "damage_case": "dmg-2f251ae2",
-          "provider_refund": "re_bccb010868c2d5f6"
+          "damage_case": "dmg-5a4ca8ae",
+          "payment_intent": "pi_670f51737a31856d",
+          "provider_refund": "re_b676aeef997ce85b"
         },
-        "text": "{\"id\": \"rf-85f8788e\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-2f251ae2\", \"provider_refund\": \"re_bccb010868c2d5f6\"}"
+        "text": "{\"id\": \"rf-937d3670\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-5a4ca8ae\", \"payment_intent\": \"pi_670f51737a31856d\", \"provider_refund\": \"re_b676aeef997ce85b\"}"
       }
     }
   ],
@@ -94,8 +96,8 @@
     "approved"
   ],
   "confirmed": [
-    "rf-85f8788e",
-    "rf-85f8788e"
+    "rf-937d3670",
+    "rf-937d3670"
   ],
   "answer": "ord-5001 was delivered. I've refunded 14.99 USD for the damaged Moby-Dick, and Harbor has confirmed it."
 }

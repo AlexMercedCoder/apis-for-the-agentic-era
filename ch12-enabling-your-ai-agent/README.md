@@ -9,7 +9,7 @@ The Harbor support agent, end to end. Rosa asks: "Where's my order ord-5001? The
 - `../ch05-graphql-apis/` (its server and `trusted-documents.json`), `../ch09-payment-standards/` (the provider stand-in and `webhooks.py`), `../ch10-agent-protocols/harbor_mcp.py` (only for the tool comparison), and `../harbor-data/`.
 - No model key. `host.py` uses Chapter 1's stand-in pattern: `stand_in()` picks the call a model would pick from the same tool list a model gets (`host.py --print-tools`), and `phone.py` plays Rosa's phone.
 
-Every key, secret, and token is a placeholder; the issuer's signing key is generated into `keys/` (ignored by Git) on first run.
+Every key, secret, and token is a placeholder (each client has its own placeholder secret, and the host holds only the assistant's); the issuer's signing key is generated into `keys/` (ignored by Git) on first run.
 
 ## Run everything
 
@@ -21,10 +21,10 @@ It starts, all on `127.0.0.1`:
 
 | Port | What |
 |---|---|
-| 8120 | `issuer.py`: test issuer (token exchange per RFC 8693 with nested `act`; CIBA poll mode, `openid` required, with `authorization_details` type `harbor_refund`, rendered by the issuer for the phone; `/phone/*` for the stand-in phone, behind a device secret `run.sh` gives only to the issuer and `phone.py`) |
+| 8120 | `issuer.py`: test issuer (token exchange per RFC 8693 with nested `act`; CIBA poll mode, `openid` required, with `authorization_details` type `harbor_refund` checked field by field (known currency, integer amount, no free text), rendered by the issuer for the phone; `/phone/*` for the stand-in phone, behind a device secret `run.sh` gives only to the issuer and `phone.py`) |
 | 8005 | Chapter 5's GraphQL server, `--trusted-only` |
 | 8091 | `payment_provider.py`: Chapter 9's provider stand-in, webhooks to 8123 |
-| 8123 | `refunds_api.py`: `POST /orders/{order_id}/refunds` (needs `orders:refund`, the support MCP server as current actor, matching `authorization_details`, an `Idempotency-Key` equal to the approval's `request_id`, and a damage case; one refund per order line; state in `state/refunds.json`; provider key per order line; a provider failure frees the line; problem details with `hint`); `--slow-first` holds the first created refund's answer 1.5 s |
+| 8123 | `refunds_api.py`: `POST /orders/{order_id}/refunds` (needs `orders:refund`, the support MCP server as current actor, matching `authorization_details`, an `Idempotency-Key` equal to the approval's `request_id`, the order's currency, a recorded payment, and a damage case; one refund per order line; state in `state/refunds.json`; provider key per order line, so a lost record can't refund twice while the provider keeps keys (24 hours in the stand-in); a provider refusal or an unreachable provider frees the line, while a lost reply (timeout, reset, 5xx) answers 202 with status `unknown`, keeps the line reserved, and reconciles with the provider under the same key; problem details with `hint`); `--slow-first` holds the first created refund's answer 1.5 s |
 | 8124 | `fulfillment_agent.py`: A2A 1.0, skill `report-damage` (random case IDs; the description stored as untrusted text); requires a token for its own audience, checks the order's owner, answers `GetTask` only for the task's creator |
 | 8122 | `support_mcp.py`: MCP `2026-07-28` server with `order_overview` and `refund_damaged_copy` |
 | 8125 | the host's receiver for the signed `refund.succeeded` webhook (while `host.py` runs) |
@@ -48,7 +48,7 @@ It takes about three minutes, mostly waiting out the gateway's per-person limit.
 ## Offline checks
 
 ```bash
-uv run python test_offline.py   # retries, breaker, phone, exchange, refunds
+uv run python test_offline.py   # retries, breaker, phone, exchange, refunds API
 uv run python replay_test.py captures/fixtures-capstone.json
 ```
 

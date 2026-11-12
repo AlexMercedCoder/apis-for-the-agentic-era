@@ -15,7 +15,7 @@ import httpx
 
 import issuer
 
-FORM = {"client_id": "harbor-assistant", "client_secret": "not-a-real-secret"}
+FORM = {"client_id": "harbor-assistant", "client_secret": "not-a-real-secret-assistant"}
 detail = [{"type": "harbor_refund", "actions": ["refund"],
            "order_id": "ord-5001", "book_id": "bk-1001", "max_amount": 1,
            "currency": "USD", "request_id": str(uuid.uuid4())}]

@@ -56,14 +56,14 @@
       "result": {
         "isError": false,
         "structured": {
-          "book_id": "bk-1001",
           "order_id": "ord-5001",
-          "case_id": "dmg-ea3fd3e6",
+          "case_id": "dmg-f0715f5b",
+          "refund_eligible": true,
           "return_required": false,
-          "refund_eligible": true
+          "book_id": "bk-1001"
         },
-        "text": "Damage recorded as dmg-ea3fd3e6; no return needed.",
-        "task": "231ceaf5-7069-4417-ae49-edcffc09e81c"
+        "text": "Damage recorded as dmg-f0715f5b; no return needed.",
+        "task": "355e6e76-6765-418e-9b44-9411e15b674a"
       }
     },
     {
@@ -71,21 +71,22 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "damage_case": "dmg-ea3fd3e6"
+        "damage_case": "dmg-f0715f5b"
       },
       "result": {
         "isError": false,
         "structured": {
-          "id": "rf-26c9663c",
+          "id": "rf-4ca96d1f",
           "order_id": "ord-5001",
           "book_id": "bk-1001",
           "amount_cents": 1499,
           "currency": "USD",
           "status": "pending",
-          "damage_case": "dmg-ea3fd3e6",
-          "provider_refund": "re_5435934b1e0bc86d"
+          "damage_case": "dmg-f0715f5b",
+          "payment_intent": "pi_dfc2c4f1d557ba3e",
+          "provider_refund": "re_c6e9fa5f3b2108ec"
         },
-        "text": "{\"id\": \"rf-26c9663c\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-ea3fd3e6\", \"provider_refund\": \"re_5435934b1e0bc86d\"}"
+        "text": "{\"id\": \"rf-4ca96d1f\", \"order_id\": \"ord-5001\", \"book_id\": \"bk-1001\", \"amount_cents\": 1499, \"currency\": \"USD\", \"status\": \"pending\", \"damage_case\": \"dmg-f0715f5b\", \"payment_intent\": \"pi_dfc2c4f1d557ba3e\", \"provider_refund\": \"re_c6e9fa5f3b2108ec\"}"
       }
     }
   ],
@@ -93,7 +94,7 @@
     "approved"
   ],
   "confirmed": [
-    "rf-26c9663c"
+    "rf-4ca96d1f"
   ],
   "answer": "ord-5001 was delivered. I've refunded 14.99 USD for the damaged Moby-Dick, and Harbor has confirmed it."
 }

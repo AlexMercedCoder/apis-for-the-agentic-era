@@ -14,7 +14,9 @@ a hint.
 Refunds, the line index, and saved responses are written to
 state/refunds.json, and the provider call's Idempotency-Key is derived
 from the order line, so a restart between an attempt and its retry
-can't refund twice. A provider failure undoes the claim on the line.
+can't refund twice. A provider refusal frees the line; a timeout or 5xx leaves the outcome
+unknown, keeps the line reserved, answers 202, and reconciles with the
+provider under the same key before any new attempt.
 
 The refund is pending until the payment provider's signed charge.refunded
 webhook arrives (Chapter 9's rule), and then Harbor tells its support
@@ -54,6 +56,7 @@ PROBLEMS = "https://harbor.example/problems/"
 SLOW_FIRST = False
 PROVIDER_TRANSPORT = None                         # tests inject a mock
 STORE = common.STATE / "refunds.json"
+RECONCILE_SCALE = 1.0                             # tests shrink the waits
 
 log = logging.getLogger("refunds")
 logging.basicConfig(stream=sys.stderr, level=logging.INFO,
@@ -76,7 +79,8 @@ def save():
         "payments": payments, "refunds": refunds,
         "by_line": [[*k, v] for k, v in by_line.items()],
         "keys": [[*k, v] for k, v in keys.items()
-                 if v["response"] is not None]}))
+                 if v["response"] is not None],
+        "early_hooks": early_hooks}))
 
 
 def load():
@@ -87,6 +91,7 @@ def load():
     refunds.update(doc["refunds"])
     by_line.update({(o, b): r for o, b, r in doc["by_line"]})
     keys.update({(c, k): v for c, k, v in doc["keys"]})
+    early_hooks.update(doc.get("early_hooks", {}))
 
 
 class RefundRequest(BaseModel):
@@ -217,8 +222,10 @@ async def decide(order_id, body, claims, who):
     amount = line["unit_price_cents"]
     approved = [d for d in claims.get("authorization_details", [])
                 if d.get("type") == "harbor_refund"
+                and "refund" in d.get("actions", [])
                 and d.get("order_id") == order_id
                 and d.get("book_id") == body.book_id
+                and d.get("currency") == order["currency"]
                 and d.get("max_amount", 0) >= amount]
     if not approved:
         log.info("403 outside-approval %s %s", order_id, who)
@@ -226,15 +233,54 @@ async def decide(order_id, body, claims, who):
                        "The person's approval doesn't cover this refund.")
     if (order_id, body.book_id) in by_line:
         done = refunds[by_line[(order_id, body.book_id)]]
+        if done["status"] == "unknown":
+            return problem(409, "refund-unconfirmed", "Refund unconfirmed",
+                           f"A refund for {body.book_id} on {order_id} is "
+                           f"being confirmed with the provider.",
+                           refund_id=done["id"])
         return problem(409, "already-refunded", "Already refunded",
                        f"{body.book_id} on {order_id} was refunded as "
                        f"{done['id']}.", refund_id=done["id"])
+    if order_id not in payments:
+        return problem(409, "payment-not-recorded", "No payment on record",
+                       f"Harbor has no recorded payment for {order_id}.",
+                       hint="Retry after the payment is recorded.")
     refund = {"id": f"rf-{secrets.token_hex(4)}", "order_id": order_id,
               "book_id": body.book_id, "amount_cents": amount,
               "currency": order["currency"], "status": "pending",
-              "damage_case": body.damage_case}
+              "damage_case": body.damage_case,
+              "payment_intent": payments[order_id]}
     refunds[refund["id"]] = refund
     by_line[(order_id, body.book_id)] = refund["id"]
+    outcome = await provider_refund(refund)
+    if outcome == "refused":
+        del refunds[refund["id"]]           # the provider said no: free it
+        del by_line[(order_id, body.book_id)]
+        return problem(502, "provider-refused", "Provider refused",
+                       "The payment provider refused the refund, so "
+                       "nothing was refunded.")
+    if outcome == "unknown":
+        refund["status"] = "unknown"        # keep the line reserved
+        save()
+        asyncio.get_event_loop().create_task(reconcile(refund))
+        log.info("202 %s %s outcome unknown; reconciling", refund["id"],
+                 order_id)
+        return JSONResponse(refund, status_code=202)
+    log.info("201 %s %s %s %d cents, provider %s", refund["id"], order_id,
+             body.book_id, amount, refund["provider_refund"])
+    return JSONResponse(refund, status_code=201, headers={
+        "Location": f"/orders/{order_id}/refunds/{refund['id']}"})
+
+
+async def provider_refund(refund):
+    """One provider call: "done", "refused" (nothing moved), or "unknown".
+
+    The key comes from the order line, so every attempt for this line,
+    before or after a restart, is the same refund to the provider while it
+    keeps the key (24 hours at most providers). A connection that never
+    opened moved nothing; a timeout, a reset, or a 5xx may have, so the
+    line stays reserved until the provider answers.
+    """
     try:
         with tracer.start_as_current_span(
                 "POST /v1/refunds", kind=SpanKind.CLIENT,
@@ -245,26 +291,46 @@ async def decide(order_id, body, claims, who):
                 resp = await http.post(
                     f"{PROVIDER}/v1/refunds",
                     headers={"Authorization": f"Bearer {PROVIDER_KEY}",
-                             "Idempotency-Key":
-                                 f"refund-{order_id}-{body.book_id}"},
-                    data={"payment_intent": payments[order_id],
-                          "amount": str(amount)})
-        resp.raise_for_status()
-    except httpx.HTTPError as err:
-        del refunds[refund["id"]]           # nothing moved: free the line
-        del by_line[(order_id, body.book_id)]
-        log.info("502 provider %s %s", type(err).__name__, order_id)
-        return problem(502, "provider-unavailable", "Provider unavailable",
-                       "The payment provider didn't confirm the refund; "
-                       "nothing was refunded.",
-                       hint="Retry later with the same approval.")
+                             "Idempotency-Key": f"refund-{refund['order_id']}"
+                                                f"-{refund['book_id']}"},
+                    data={"payment_intent": refund["payment_intent"],
+                          "amount": str(refund["amount_cents"])})
+    except httpx.ConnectError as err:
+        log.info("provider not reached: %s", type(err).__name__)
+        return "refused"
+    except httpx.TransportError as err:
+        log.info("provider outcome unknown: %s", type(err).__name__)
+        return "unknown"
+    if resp.status_code >= 500 or resp.status_code == 409:
+        return "unknown"
+    if resp.status_code >= 400:
+        return "refused"
     refund["provider_refund"] = resp.json()["id"]
+    if refund["status"] == "unknown":
+        refund["status"] = "pending"
     if refund["provider_refund"] in early_hooks:
         settle(early_hooks.pop(refund["provider_refund"]))
-    log.info("201 %s %s %s %d cents, provider %s", refund["id"], order_id,
-             body.book_id, amount, refund["provider_refund"])
-    return JSONResponse(refund, status_code=201, headers={
-        "Location": f"/orders/{order_id}/refunds/{refund['id']}"})
+    save()
+    return "done"
+
+
+async def reconcile(refund, waits=(1, 2, 4, 8, 16, 32, 60)):
+    """Ask the provider again with the same key until it answers."""
+    for wait in waits:
+        await asyncio.sleep(wait * RECONCILE_SCALE)
+        outcome = await provider_refund(refund)
+        if outcome == "done":
+            log.info("reconciled %s: provider %s", refund["id"],
+                     refund["provider_refund"])
+            return
+        if outcome == "refused":
+            refunds.pop(refund["id"], None)
+            by_line.pop((refund["order_id"], refund["book_id"]), None)
+            save()
+            log.info("reconciled %s: nothing moved; line freed",
+                     refund["id"])
+            return
+    log.info("reconcile %s: still unknown; a person checks", refund["id"])
 
 
 @app.get("/orders/{order_id}/refunds/{refund_id}",
@@ -312,7 +378,7 @@ def settle(obj):
                    if r.get("provider_refund") == obj["id"]), None)
     if refund is None:
         return False
-    if refund["status"] == "pending" and obj["amount"] == \
+    if refund["status"] in ("pending", "unknown") and obj["amount"] == \
             refund["amount_cents"]:
         refund["status"] = "succeeded"
         log.info("webhook charge.refunded %s -> %s succeeded",
@@ -350,6 +416,12 @@ if __name__ == "__main__":
         sys.exit()
     SLOW_FIRST = args.slow_first
     load()
+
+    @app.on_event("startup")
+    async def resume():
+        for refund in list(refunds.values()):
+            if refund["status"] == "unknown":
+                asyncio.get_event_loop().create_task(reconcile(refund))
     for noisy in ("httpx", "uvicorn.access"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
     uvicorn.run(app, host="127.0.0.1", port=8123, log_level="warning")

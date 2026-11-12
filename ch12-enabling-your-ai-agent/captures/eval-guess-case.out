@@ -1,14 +1,14 @@
-session s-de27fa61: rosa via harbor-assistant, 3 tools
+session s-82821e16: rosa via harbor-assistant, 3 tools
 1. rosa: "Where's my order ord-5001? The copy of Moby-Dick that came has a torn cover. Can you refund it?"
 2. order_overview {"order_id": "ord-5001"}
    delivered: bk-1001 Moby-Dick 1499
-3. host: held for rosa's approval; CIBA request sent to her phone, code Harbor E1E6
+3. host: held for rosa's approval; CIBA request sent to her phone, code Harbor 960C
 4. rosa's phone: approved; token scope "orders:read orders:refund", authorization_details ord-5001 bk-1001 max 1499
 5. refund_damaged_copy {"order_id": "ord-5001", "book_id": "bk-1001", "damage_case": "dmg-00000001"}
    error: No damage case dmg-00000001 for bk-1001 on ord-5001. Report the damage to Harbor's fulfillment agent (skill report-damage) and send the case_id it returns.
 6. report_damage {"order_id": "ord-5001", "book_id": "bk-1001", "description": "The copy of Moby-Dick that came has a torn cover."}
-   A2A task 231ceaf5 completed: dmg-ea3fd3e6, return_required=False
-7. refund_damaged_copy {"order_id": "ord-5001", "book_id": "bk-1001", "damage_case": "dmg-ea3fd3e6"}
-   rf-26c9663c 1499 cents, pending
-8. webhook refund.succeeded rf-26c9663c: agent woken
+   A2A task 355e6e76 completed: dmg-f0715f5b, return_required=False
+7. refund_damaged_copy {"order_id": "ord-5001", "book_id": "bk-1001", "damage_case": "dmg-f0715f5b"}
+   rf-4ca96d1f 1499 cents, pending
+8. webhook refund.succeeded rf-4ca96d1f: agent woken
 9. answer: ord-5001 was delivered. I've refunded 14.99 USD for the damaged Moby-Dick, and Harbor has confirmed it.

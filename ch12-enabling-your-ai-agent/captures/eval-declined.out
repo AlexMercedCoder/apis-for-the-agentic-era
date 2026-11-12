@@ -1,11 +1,11 @@
-session s-cc232513: rosa via harbor-assistant, 3 tools
+session s-94df4735: rosa via harbor-assistant, 3 tools
 1. rosa: "Where's my order ord-5001? The copy of Moby-Dick that came has a torn cover. Can you refund it?"
 2. order_overview {"order_id": "ord-5001"}
    delivered: bk-1001 Moby-Dick 1499
 3. report_damage {"order_id": "ord-5001", "book_id": "bk-1001", "description": "The copy of Moby-Dick that came has a torn cover."}
-   A2A task 8bfcc8fa completed: dmg-e46501da, return_required=False
-4. host: held for rosa's approval; CIBA request sent to her phone, code Harbor CA78
+   A2A task c30e4cb1 completed: dmg-ced266f4, return_required=False
+4. host: held for rosa's approval; CIBA request sent to her phone, code Harbor C25A
 5. rosa's phone: access_denied
-6. refund_damaged_copy {"order_id": "ord-5001", "book_id": "bk-1001", "damage_case": "dmg-e46501da"}
+6. refund_damaged_copy {"order_id": "ord-5001", "book_id": "bk-1001", "damage_case": "dmg-ced266f4"}
    error: The customer declined on her phone; nothing was refunded.
 7. answer: You declined the refund on your phone, so nothing was changed.

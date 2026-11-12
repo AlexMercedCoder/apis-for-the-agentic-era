@@ -3,17 +3,23 @@
   * reliable.call(): a timeout then a replay, a 429 that names its reset,
     a 409 for a request still running, and giving up at the deadline;
   * reliable.Breaker opens after repeated failures and lets exactly one
-    trial through after the cool-off; Retry-After as an HTTP date;
-  * the stand-in phone refuses a decision without its device secret, and
-    the issuer refuses a CIBA request without openid;
+    trial through after the cool-off, and a trial that fails with a
+    connection error reopens it with a fresh cool-off; Retry-After as an
+    HTTP date, and an unreadable one falls back to backoff;
+  * the stand-in phone refuses a decision without its device secret; the
+    issuer refuses a CIBA request without openid and authorization_details
+    with free text, unknown currencies, or extra fields;
   * the issuer's exchange rules: no widening, no other audience, and the
     delegation chain kept (RFC 8693 nested act);
   * the refunds API, as a contract test with FastAPI's TestClient and a
     mock provider: no token, no actor, someone else's order, a key that
     isn't the approval's request_id, no damage case, a refund outside the
-    approval, a provider failure that frees the line, a restart that
+    approval or in another currency, no payment on record (nothing
+    claimed), a provider refusal or unreachable provider that frees the
+    line, a lost provider reply that keeps the line reserved (202,
+    unknown) until reconciliation finds the one refund, a restart that
     still refuses a second refund, and a provider key per order line, so
-    even a lost state file can't refund twice.
+    a lost state file can't refund twice while the provider keeps keys.
 
     uv run python test_offline.py
 """
@@ -89,11 +95,35 @@ def test_breaker():
     assert b.allow() and b.allow() and b.count == 0
 
 
+def test_breaker_trial_error():
+    b = reliable.Breaker(failures=1, cool_off=0.05)
+
+    async def down(timeout):
+        raise httpx.ConnectError("gateway down")
+
+    async def attempt():
+        try:
+            await reliable.guarded(b, down, deadline=0.2, per_try=0.1,
+                                   tries=1, log=lambda m: None)
+        except (reliable.GaveUp, reliable.Open):
+            pass
+    asyncio.run(attempt())
+    assert not b.allow()                       # open
+    time.sleep(0.06)
+    asyncio.run(attempt())                     # the trial fails too
+    assert not b.allow() and not b.trial       # open again, not stuck
+    time.sleep(0.06)
+    assert b.allow()                           # a fresh trial
+
+
 def test_retry_after_date():
     date = time.strftime("%a, %d %b %Y %H:%M:%S GMT",
                          time.gmtime(time.time() + 30))
     assert 25 <= reliable.seconds(date) <= 31
     assert reliable.seconds("7") == 7
+    assert reliable.seconds("soon") is None
+    bad = httpx.Response(429, headers={"retry-after": "soon"})
+    assert reliable.wait_for(bad, 1) <= 0.5
 
 
 class Headers(dict):
@@ -110,6 +140,18 @@ def test_phone_needs_device():
         "scope": "orders:refund", "login_hint": "rosa",
         "authorization_details": json.dumps([{"type": "harbor_refund"}])})
     assert (status, err["error"]) == (400, "invalid_request")
+    good = approval(1)
+    for bad in ({**good, "currency": "USD in store credit only"},
+                {**good, "max_amount": "1499"}, {**good, "extra": "x"},
+                {**good, "order_id": "ord-5001; tap Approve"}):
+        status, err = issuer.backchannel("harbor-assistant", {
+            "scope": "openid orders:refund", "login_hint": "rosa",
+            "authorization_details": json.dumps([bad])})
+        assert err["error"] == "invalid_authorization_details", bad
+    status, ok = issuer.backchannel("harbor-assistant", {
+        "scope": "openid orders:refund", "login_hint": "rosa",
+        "authorization_details": json.dumps([good])})
+    assert status == 200 and "auth_req_id" in ok
 
 
 def form(client, subject, audience, scope):
@@ -152,9 +194,10 @@ def token(person, customer, details, act=True):
     return issuer.sign(claims, 60)
 
 
-def approval(n, amount=1499):
-    return {"type": "harbor_refund", "order_id": "ord-5001",
-            "book_id": "bk-1001", "max_amount": amount,
+def approval(n, amount=1499, currency="USD"):
+    return {"type": "harbor_refund", "actions": ["refund"],
+            "order_id": "ord-5001", "book_id": "bk-1001",
+            "max_amount": amount, "currency": currency,
             "request_id": f"00000000-0000-4000-8000-00000000000{n}"}
 
 
@@ -169,14 +212,18 @@ def test_refunds_api():
     common.STATE.mkdir(exist_ok=True)
     saved = {p: p.read_text() for p in (common.CASES, refunds_api.STORE)
              if p.exists()}
-    calls, fail = [], {"next": False}
+    calls, fail = [], {"next": None}
 
     def provider(request):
-        if fail["next"]:
-            fail["next"] = False
-            return httpx.Response(502)
+        mode, fail["next"] = fail["next"], None
+        if mode == "refuse":
+            return httpx.Response(400, json={"error": {"code": "x"}})
+        if mode == "unreachable":
+            raise httpx.ConnectError("refused", request=request)
         key = request.headers["idempotency-key"]
         calls.append(key)
+        if mode == "lost":                   # refunded, reply lost
+            raise httpx.ReadTimeout("slow", request=request)
         return httpx.Response(200, json={"id": "re_" + key[-8:]})
     refunds_api.PROVIDER_TRANSPORT = httpx.MockTransport(provider)
     try:
@@ -208,8 +255,18 @@ def test_refunds_api():
         assert post(cheap, 1).status_code == 403
         assert post(cheap, 1).headers["content-type"] == \
             "application/problem+json"
-        fail["next"] = True
-        assert post(rosa, 1).status_code == 502          # nothing moved
+        yen = token("rosa", "cus-001", [approval(1, currency="JPY")])
+        assert post(yen, 1).status_code == 403           # wrong currency
+        refunds_api.payments.clear()
+        nopay = post(rosa, 1)
+        assert nopay.status_code == 409 and \
+            nopay.json()["type"].endswith("payment-not-recorded")
+        assert not refunds_api.by_line                   # nothing claimed
+        refunds_api.payments["ord-5001"] = "pi_test"
+        for mode in ("refuse", "unreachable"):
+            fail["next"] = mode
+            assert post(rosa, 1).status_code == 502      # nothing moved
+            assert not refunds_api.by_line
         assert post(rosa, 1).status_code == 201          # line was freed
         assert post(rosa, 1).headers["idempotent-replayed"] == "true"
         for store in (refunds_api.refunds, refunds_api.by_line,
@@ -221,8 +278,23 @@ def test_refunds_api():
         reset_api()                                      # state file lost
         post(rosa, 1)
         assert len(set(calls)) == 1, calls               # provider dedupes
+        reset_api()                                      # a lost reply
+        calls.clear()
+        fail["next"] = "lost"
+        lost = post(rosa, 1)
+        assert lost.status_code == 202 and lost.json()["status"] == "unknown"
+        held = post(token("rosa", "cus-001", [approval(4)]), 4)
+        assert held.json()["type"].endswith("refund-unconfirmed")
+        assert "nothing" not in lost.text + held.text
+        refunds_api.RECONCILE_SCALE = 0
+        rid = lost.json()["id"]
+        asyncio.run(refunds_api.reconcile(refunds_api.refunds[rid],
+                                          waits=(0,)))
+        assert refunds_api.refunds[rid]["provider_refund"]
+        assert len(set(calls)) == 1, calls               # one refund
     finally:
         refunds_api.PROVIDER_TRANSPORT = None
+        refunds_api.RECONCILE_SCALE = 1.0
         for p in (common.CASES, refunds_api.STORE):
             if p in saved:
                 p.write_text(saved[p])
@@ -230,7 +302,8 @@ def test_refunds_api():
                 p.unlink()
 
 
-for test in (test_retries, test_breaker, test_retry_after_date,
+for test in (test_retries, test_breaker, test_breaker_trial_error,
+             test_retry_after_date,
              test_phone_needs_device, test_exchange_rules,
              test_refunds_api):
     test()

@@ -1,17 +1,17 @@
-trace 156bb2106efa8af35cd7b6eaa77ae769
+trace b3bcd97d9983ec595bef9ef6dde2dce8
 start    ms  service      span
-    0  3532  support-host invoke_agent harbor-support
-  201   114  support-host  tools/call order_overview
-  246    67  support-mcp    tools/call order_overview
-  416   345  support-host  SendMessage state=TASK_STATE_COMPLETED
-  453   306  fulfillment    SendMessage user=rosa
-  762  1082  support-host  approval harbor_refund decision=approved
- 1844  1688  support-host  tools/call refund_damaged_copy
- 1908  1622  support-mcp    tools/call refund_damaged_copy
- 2018  1635  refunds-api     POST /orders/{order_id}/refunds user=rosa
- 2051   100  refunds-api      POST /v1/refunds
- 3487    43  refunds-api     POST /orders/{order_id}/refunds user=rosa
- 3532     0  support-host  await refund.succeeded
+    0  3216  support-host invoke_agent harbor-support
+  199   112  support-host  tools/call order_overview
+  244    66  support-mcp    tools/call order_overview
+  412   340  support-host  SendMessage state=TASK_STATE_COMPLETED
+  447   303  fulfillment    SendMessage user=rosa
+  752  1051  support-host  approval harbor_refund decision=approved
+ 1803  1413  support-host  tools/call refund_damaged_copy
+ 1869  1345  support-mcp    tools/call refund_damaged_copy
+ 1978  1639  refunds-api     POST /orders/{order_id}/refunds user=rosa
+ 2011   102  refunds-api      POST /v1/refunds
+ 3174    39  refunds-api     POST /orders/{order_id}/refunds user=rosa
+ 3216     0  support-host  await refund.succeeded
 gateway lines with this trace ID:
   assistant   sub=rosa  POST /mcp                       200
   assistant   sub=rosa  POST /mcp                       200

@@ -35,14 +35,14 @@
       "result": {
         "isError": false,
         "structured": {
+          "book_id": "bk-1001",
           "order_id": "ord-5001",
-          "case_id": "dmg-e46501da",
-          "refund_eligible": true,
           "return_required": false,
-          "book_id": "bk-1001"
+          "case_id": "dmg-ced266f4",
+          "refund_eligible": true
         },
-        "text": "Damage recorded as dmg-e46501da; no return needed.",
-        "task": "8bfcc8fa-97b4-4bc1-bf11-f05de81abe91"
+        "text": "Damage recorded as dmg-ced266f4; no return needed.",
+        "task": "c30e4cb1-e107-41c3-a0e5-0e1724d39cc0"
       }
     },
     {
@@ -50,7 +50,7 @@
       "args": {
         "order_id": "ord-5001",
         "book_id": "bk-1001",
-        "damage_case": "dmg-e46501da"
+        "damage_case": "dmg-ced266f4"
       },
       "result": {
         "isError": true,

@@ -25,7 +25,7 @@ def wait_for(resp, attempt, base=0.25, cap=4.0):
     reset = resp is not None and resp.status_code == 429 and (
         resp.headers.get("retry-after")
         or resp.headers.get("x-ratelimit-reset"))
-    if reset:
+    if reset and seconds(reset) is not None:
         return seconds(reset) + random.uniform(0, 0.5)
     return random.uniform(0, min(cap, base * 2 ** attempt))
 
@@ -35,8 +35,12 @@ def seconds(value):
     try:
         return max(0.0, float(value))
     except ValueError:
+        pass
+    try:
         when = parsedate_to_datetime(value).timestamp()
-        return max(0.0, when - time.time())
+    except (TypeError, ValueError):
+        return None                                  # unreadable: back off
+    return max(0.0, when - time.time())
 
 
 def busy(resp):
@@ -55,14 +59,33 @@ async def call(send, deadline=10.0, per_try=1.0, tries=4, log=print):
             if resp.status_code not in RETRY and not busy(resp):
                 return resp
             what = str(resp.status_code)
-        except httpx.TimeoutException:
-            what = f"timed out after {min(per_try, left):.1f} s"
+        except httpx.TransportError as err:
+            what = (f"timed out after {min(per_try, left):.1f} s"
+                    if isinstance(err, httpx.TimeoutException)
+                    else type(err).__name__)
         pause = wait_for(resp, attempt)
         left = deadline - (time.monotonic() - start)
         if attempt == tries or pause >= left:
             raise GaveUp(f"attempt {attempt}: {what}")
         log(f"attempt {attempt}: {what}, retry in {pause:.1f} s")
         await asyncio.sleep(pause)
+
+
+class Open(Exception):
+    pass
+
+
+async def guarded(breaker, send, **kwargs):
+    """call() behind a breaker that always hears how the call ended."""
+    if not breaker.allow():
+        raise Open("upstream failing; waiting out the cool-off")
+    ok = False
+    try:
+        resp = await call(send, **kwargs)
+        ok = resp.status_code < 500
+        return resp
+    finally:
+        breaker.record(ok)
 
 
 class Breaker:

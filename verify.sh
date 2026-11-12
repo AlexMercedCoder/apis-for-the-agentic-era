@@ -714,7 +714,7 @@ check "ch11: inventory finds the shadow routes and the deprecated path" \
 
 # Chapter 12: the Harbor support agent, end to end. The offline checks need
 # only uv; run.sh needs Docker (apache/apisix:3.19.0-debian).
-check "ch12: retries, breaker, phone secret, exchange rules, one refund per line across restarts (offline)" \
+check "ch12: retries, breaker trials, phone secret, exchange, currency, unknown provider outcome, no-payment, restarts (offline)" \
   bash -c "cd ch12-enabling-your-ai-agent && OUT=\"$TMP\" uv run -q python test_offline.py"
 check "ch12: the recorded capstone replays offline with the refund held" \
   bash -c "cd ch12-enabling-your-ai-agent && uv run -q python replay_test.py captures/fixtures-capstone.json | grep -q 'answer matches; 3 calls replayed'"
