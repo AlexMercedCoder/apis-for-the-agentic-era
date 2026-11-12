@@ -292,6 +292,19 @@ def test_refunds_api():
                                           waits=(0,)))
         assert refunds_api.refunds[rid]["provider_refund"]
         assert len(set(calls)) == 1, calls               # one refund
+        reset_api()              # lost reply, then unreachable, then ok
+        calls.clear()
+        refunds_api.RECONCILE_SCALE = 1000   # park the API's own task
+        fail["next"] = "lost"
+        rid = post(rosa, 1).json()["id"]
+        refund = refunds_api.refunds[rid]
+        fail["next"] = "unreachable"
+        asyncio.run(refunds_api.reconcile(refund, waits=(0,)))
+        assert refunds_api.by_line.get(("ord-5001", "bk-1001")) == rid
+        assert refund["status"] == "unknown"             # still reserved
+        asyncio.run(refunds_api.reconcile(refund, waits=(0,)))
+        assert refund.get("provider_refund")
+        assert len(set(calls)) == 1, calls               # one refund
     finally:
         refunds_api.PROVIDER_TRANSPORT = None
         refunds_api.RECONCILE_SCALE = 1.0

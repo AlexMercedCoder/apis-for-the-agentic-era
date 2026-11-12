@@ -369,6 +369,11 @@ def stand_in(context, scenario="happy"):
     if done and scenario == "repeat" and len(after) == 1:
         return {"call": ("refund_damaged_copy",
                          {**refund, "damage_case": case["case_id"]})}
+    if done and done[-1]["structured"].get("status") == "unknown":
+        return {"answer": f"{order_id} was {overview['status']}. I've "
+                          f"sent the refund for the damaged "
+                          f"{line['title']}, and Harbor is confirming it "
+                          f"with the payment provider."}
     if done:
         amount = done[-1]["structured"]["amount_cents"] / 100
         confirmed = any(i.get("source") == "refund.succeeded"

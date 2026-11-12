@@ -272,14 +272,16 @@ async def decide(order_id, body, claims, who):
         "Location": f"/orders/{order_id}/refunds/{refund['id']}"})
 
 
-async def provider_refund(refund):
+async def provider_refund(refund, first=True):
     """One provider call: "done", "refused" (nothing moved), or "unknown".
 
     The key comes from the order line, so every attempt for this line,
     before or after a restart, is the same refund to the provider while it
     keeps the key (24 hours at most providers). A connection that never
-    opened moved nothing; a timeout, a reset, or a 5xx may have, so the
-    line stays reserved until the provider answers.
+    opened moved nothing on a first attempt; a timeout, a reset, or a 5xx
+    may have, so the line stays reserved until the provider answers. During
+    reconciliation only a provider 4xx to the replayed key frees the line:
+    an unreachable provider then says nothing about the first attempt.
     """
     try:
         with tracer.start_as_current_span(
@@ -297,7 +299,7 @@ async def provider_refund(refund):
                           "amount": str(refund["amount_cents"])})
     except httpx.ConnectError as err:
         log.info("provider not reached: %s", type(err).__name__)
-        return "refused"
+        return "refused" if first else "unknown"   # a retry can't clear it
     except httpx.TransportError as err:
         log.info("provider outcome unknown: %s", type(err).__name__)
         return "unknown"
@@ -318,7 +320,7 @@ async def reconcile(refund, waits=(1, 2, 4, 8, 16, 32, 60)):
     """Ask the provider again with the same key until it answers."""
     for wait in waits:
         await asyncio.sleep(wait * RECONCILE_SCALE)
-        outcome = await provider_refund(refund)
+        outcome = await provider_refund(refund, first=False)
         if outcome == "done":
             log.info("reconciled %s: provider %s", refund["id"],
                      refund["provider_refund"])
@@ -327,7 +329,7 @@ async def reconcile(refund, waits=(1, 2, 4, 8, 16, 32, 60)):
             refunds.pop(refund["id"], None)
             by_line.pop((refund["order_id"], refund["book_id"]), None)
             save()
-            log.info("reconciled %s: nothing moved; line freed",
+            log.info("reconciled %s: provider refused the key; line freed",
                      refund["id"])
             return
     log.info("reconcile %s: still unknown; a person checks", refund["id"])
